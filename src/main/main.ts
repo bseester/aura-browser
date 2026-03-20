@@ -5,7 +5,8 @@
  * pencereyi oluşturur ve IPC handler'larını kaydeder.
  */
 
-import { app, BrowserWindow, session } from 'electron';
+import { app, BrowserWindow, session, desktopCapturer, dialog } from 'electron';
+import path from 'path';
 import { WindowManager } from './window/WindowManager';
 import { registerIPCHandlers } from './ipc/handlers';
 import { AdBlocker } from './engine/adblocker';
@@ -15,10 +16,22 @@ let windowManager: WindowManager;
 
 // ─── Donanım Optimizasyonları ───
 
-// GPU hızlandırma (WebGL, CSS animasyonları)
+// GPU hızlandırma (WebGL, CSS animasyonları) ve Performans Bayrakları
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
-app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+app.commandLine.appendSwitch('enable-smooth-scrolling'); // Yumuşak kaydırma
+app.commandLine.appendSwitch('enable-oop-rasterization'); // Süreç dışı rasterization
+
+// Global Medya Kontrolleri ve Donanım Video Kod Çözücü
+app.commandLine.appendSwitch('enable-features', 'HardwareMediaKeyHandling,VaapiVideoDecoder');
+
+// Widevine CDM DRM (Netflix, Spotify vb. için)
+// Not: Gerçek dağıtımda Widevine dosyalarının proje ile paketlenmesi veya indirilmesi gerekir.
+const widevinePath = process.platform === 'win32' 
+  ? path.join(app.getAppPath(), '..', 'widevine', 'widevinecdm.dll')
+  : path.join(app.getAppPath(), '..', 'widevine', 'libwidevinecdm.dylib');
+app.commandLine.appendSwitch('widevine-cdm-path', widevinePath);
+app.commandLine.appendSwitch('widevine-cdm-version', '4.10.2710.0');
 
 // Bellek optimizasyonu
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
@@ -55,6 +68,44 @@ if (!gotLock) {
 
     // Otomatik güncellemeleri başlat
     import('./updater').then(({ setupAutoUpdater }) => setupAutoUpdater());
+
+    // ─── Chrome Web Store Spoofing (Global System User Agent) ───
+    const CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    app.userAgentFallback = CHROME_USER_AGENT;
+
+    // ─── Yerleşik Yazım Denetimi (Native Spellchecker) ───
+    session.defaultSession.setSpellCheckerEnabled(true);
+    // Dil tercihlerini işletim sisteminden kalıtımla alacak, genelde tr-TR vb.
+
+    // ─── WebRTC & Ekran Paylaşımı (Screen Sharing) ───
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        // Native Dialog ile kullanıcıya hangi ekranı paylaşacağını sor
+        const options = sources.map(s => s.name);
+        const win = windowManager.getMainWindow();
+        if (!win) {
+          callback({ video: sources[0] });
+          return;
+        }
+
+        dialog.showMessageBox(win, {
+          type: 'question',
+          buttons: [...options, 'İptal'],
+          title: 'Ekran veya Pencere Paylaşımı',
+          message: 'Hangi ekranı veya pencereyi paylaşmak istersiniz?',
+          detail: 'Web sitesi ekranınızı paylaşabilmek için izin istiyor.'
+        }).then(result => {
+          const index = result.response;
+          if (index < sources.length) {
+            callback({ video: sources[index] });
+          } else {
+            callback({ video: undefined, audio: undefined }); // Kullanıcı iptal etti
+          }
+        }).catch(() => {
+          callback({ video: undefined, audio: undefined });
+        });
+      });
+    });
 
     // Varsayılan sekme oluştur
     const tabManager = windowManager.getTabManager();

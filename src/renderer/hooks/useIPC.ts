@@ -17,7 +17,7 @@ export function useIPC() {
 
     // Sekme listesi güncellemelerini dinle
     const unsubTabUpdate = api.tabs.onUpdate((data: any) => {
-      setTabs(data.tabs, data.activeTabId);
+      setTabs(data.tabs, data.activeTabId, data.activeWorkspaceId);
     });
 
     // URL değişikliklerini dinle
@@ -37,7 +37,7 @@ export function useIPC() {
 
     // İlk sekme listesini al
     api.tabs.getList().then((data: any) => {
-      setTabs(data.tabs, data.activeTabId);
+      setTabs(data.tabs, data.activeTabId, data.activeWorkspaceId);
     });
 
     return () => {

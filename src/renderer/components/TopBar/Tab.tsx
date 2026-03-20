@@ -60,7 +60,6 @@ export default function Tab({ tab, isActive, onSelect, onClose }: TabProps) {
         else onSelect();
       }}
       onContextMenu={(e) => {
-        // ... (not shown but present in replace targets below)
         e.preventDefault();
         window.electronAPI?.tabs.showContextMenu(tab.id);
       }}

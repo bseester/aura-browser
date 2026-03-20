@@ -5,17 +5,19 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import SidebarItem from './SidebarItem';
 import BookmarksPanel from './BookmarksPanel';
 import HistoryPanel from './HistoryPanel';
 import DownloadsPanel from './DownloadsPanel';
 import WorkspacesPanel from './WorkspacesPanel';
-import SettingsPanel from './SettingsPanel';
+import ExtensionsPanel from './ExtensionsPanel';
 
-type PanelType = 'none' | 'bookmarks' | 'history' | 'downloads' | 'workspaces' | 'settings';
+type PanelType = 'none' | 'bookmarks' | 'history' | 'downloads' | 'workspaces' | 'extensions';
 
 export default function Sidebar() {
+  const navigate = useNavigate();
   const [activePanel, setActivePanel] = useState<PanelType>('none');
 
   useEffect(() => {
@@ -23,6 +25,20 @@ export default function Sidebar() {
     const width = activePanel === 'none' ? 0 : 320;
     window.electronAPI?.sidebar?.setPanelWidth(width);
   }, [activePanel]);
+
+  useEffect(() => {
+    const unsub = window.electronAPI?.sidebar?.onTogglePanel((panel: any) => {
+      setActivePanel((prev) => (prev === panel ? 'none' : panel));
+    });
+    return () => unsub?.();
+  }, []);
+
+  useEffect(() => {
+    const unsubNav = window.electronAPI?.system?.onNavigateMainRouter((path: string) => {
+      navigate(path);
+    });
+    return () => unsubNav?.();
+  }, [navigate]);
 
   const togglePanel = (panel: PanelType) => {
     setActivePanel((prev) => (prev === panel ? 'none' : panel));
@@ -79,6 +95,12 @@ export default function Sidebar() {
         isActive={activePanel === 'workspaces'}
         onClick={() => togglePanel('workspaces')}
       />
+      <SidebarItem
+        icon="🧩"
+        label="Eklentiler"
+        isActive={activePanel === 'extensions'}
+        onClick={() => togglePanel('extensions')}
+      />
 
       {/* ─── Ayırıcı ─── */}
       <div style={{ flex: 1 }} />
@@ -94,8 +116,7 @@ export default function Sidebar() {
       <SidebarItem
         icon="⚙️"
         label="Ayarlar"
-        isActive={activePanel === 'settings'}
-        onClick={() => togglePanel('settings')}
+        onClick={() => navigate('/settings')}
       />
 
       {/* ─── Yan Panel (açılır) ─── */}
@@ -124,7 +145,7 @@ export default function Sidebar() {
               {activePanel === 'history' && '🕐 Geçmiş'}
               {activePanel === 'downloads' && '📥 İndirmeler'}
               {activePanel === 'workspaces' && '📂 Çalışma Alanları'}
-              {activePanel === 'settings' && '⚙️ Ayarlar (Dal 4)'}
+              {activePanel === 'extensions' && '🧩 Eklentiler'}
             </h3>
             <motion.button
               onClick={() => setActivePanel('none')}
@@ -148,7 +169,7 @@ export default function Sidebar() {
             {activePanel === 'bookmarks' && <BookmarksPanel />}
             {activePanel === 'downloads' && <DownloadsPanel />}
             {activePanel === 'workspaces' && <WorkspacesPanel />}
-            {activePanel === 'settings' && <SettingsPanel />}
+            {activePanel === 'extensions' && <ExtensionsPanel />}
           </div>
         </motion.div>
       )}

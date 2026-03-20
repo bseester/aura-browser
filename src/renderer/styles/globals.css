@@ -1,7 +1,17 @@
 @import "tailwindcss";
 
-/* ─── Özel Değişkenler ─── */
+/* ─── Ortak Değişkenler (Tema-bağımsız) ─── */
 :root {
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ─── Koyu Tema ─── */
+[data-theme="dark"] {
   --bg-primary: #0a0a0f;
   --bg-secondary: #12121a;
   --bg-tertiary: #1a1a26;
@@ -17,12 +27,31 @@
   --danger: #ef4444;
   --success: #22c55e;
   --warning: #f59e0b;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+  --glass-strong-bg: rgba(18, 18, 26, 0.88);
+}
+
+/* ─── Aydınlık Tema ─── */
+[data-theme="light"] {
+  --bg-primary: #f5f5f7;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8e8ed;
+  --bg-glass: rgba(255, 255, 255, 0.78);
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --border-active: rgba(0, 0, 0, 0.15);
+  --text-primary: #1a1a2e;
+  --text-secondary: #5a5a6e;
+  --text-muted: #8b8b9e;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.2);
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  --glass-strong-bg: rgba(255, 255, 255, 0.92);
 }
 
 /* ─── Global Reset ─── */
@@ -68,7 +97,7 @@ html, body, #root {
 }
 
 .glass-strong {
-  background: rgba(18, 18, 26, 0.88);
+  background: var(--glass-strong-bg);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
   border: 1px solid var(--border-active);
@@ -85,12 +114,12 @@ html, body, #root {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ─── Animasyon Yardımcıları ─── */

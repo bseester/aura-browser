@@ -6,10 +6,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTabStore } from '../../store/useTabStore';
+import { useSettingsStore, SEARCH_ENGINES } from '../../store/useSettingsStore';
 
 export default function Omnibox() {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { tabs, activeTabId } = useTabStore();
 
@@ -19,23 +22,56 @@ export default function Omnibox() {
   useEffect(() => {
     if (!isFocused && activeTab) {
       setInputValue(activeTab.url === 'about:blank' ? '' : activeTab.url);
+      setShowSuggestions(false);
     }
   }, [activeTab?.url, isFocused]);
 
+  useEffect(() => {
+    if (!isFocused || !inputValue.trim() || inputValue === activeTab?.url) {
+      setSuggestions([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const sugs = await window.electronAPI?.system?.getSuggestions(inputValue);
+      if (sugs) setSuggestions(sugs);
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [inputValue, isFocused]);
+
+  const handleGo = (text: string) => {
+    if (!text.trim()) return;
+    const urlPattern = /^(https?:\/\/)?localhost(:\d+)?(\/.*)?$|^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/i;
+    let target = text.trim();
+    if (target !== 'about:blank' && !target.startsWith('chrome://') && !target.startsWith('aura://') && !target.startsWith('file://')) {
+      if (urlPattern.test(target) && !target.includes(' ')) {
+        target = target.startsWith('http') ? target : `https://${target}`;
+      } else {
+        const currentEngine = useSettingsStore.getState().searchEngine;
+        const engineConfig = SEARCH_ENGINES.find(e => e.value === currentEngine) || SEARCH_ENGINES[0];
+        target = `${engineConfig.url}${encodeURIComponent(target)}`;
+      }
+    }
+    window.electronAPI?.nav.go(target);
+    setShowSuggestions(false);
+    inputRef.current?.blur();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
-    window.electronAPI?.nav.go(inputValue.trim());
-    inputRef.current?.blur();
+    handleGo(inputValue);
   };
 
   const handleFocus = () => {
     setIsFocused(true);
+    setShowSuggestions(true);
     setTimeout(() => inputRef.current?.select(), 0);
   };
 
   const handleBlur = () => {
-    setIsFocused(false);
+    setTimeout(() => {
+      setIsFocused(false);
+      setShowSuggestions(false);
+    }, 150);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -44,9 +80,7 @@ export default function Omnibox() {
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (!inputValue.trim()) return;
-      window.electronAPI?.nav.go(inputValue.trim());
-      inputRef.current?.blur();
+      handleGo(inputValue);
     }
   };
 
@@ -146,31 +180,122 @@ export default function Omnibox() {
           </motion.button>
         )}
 
-        {/* Yer İmi Ekleme Butonu */}
-        {!isLoading && activeTab && activeTab.url !== 'about:blank' && activeTab.url !== '' && (
-          <motion.button
-            type="button"
-            onClick={() => {
-              window.electronAPI?.bookmarks?.add?.(activeTab.url, activeTab.title || 'Yeni Yer İmi');
-            }}
-            whileHover={{ scale: 1.2, color: '#f59e0b' }}
-            whileTap={{ scale: 0.9 }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              fontSize: '15px',
-              padding: '0 4px',
-              display: 'flex',
-              alignItems: 'center',
-            }}
-            title="Yer imlerine ekle"
-          >
-            ★
-          </motion.button>
-        )}
+        {/* AI Modu Button - Bar içine yerleştirildi */}
+        <motion.button
+          type="button"
+          whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.08)' }}
+          whileTap={{ scale: 0.95 }}
+          style={{
+            background: 'rgba(99, 102, 241, 0.1)',
+            border: '1px solid rgba(99, 102, 241, 0.2)',
+            borderRadius: '14px',
+            padding: '3px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            color: 'var(--accent)',
+            fontSize: '11px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            marginLeft: 'auto', // sağa yasla
+          }}
+        >
+          <span>✨ AI</span>
+        </motion.button>
       </motion.div>
+
+      {/* ─── AutoComplete Arama Önerileri ─── */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div
+          className="glass-strong"
+          style={{
+            position: 'absolute',
+            top: '44px',
+            left: 0,
+            right: 0,
+            background: 'var(--bg-secondary)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 0 8px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px var(--border-subtle)',
+            zIndex: 9999,
+          }}
+        >
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {suggestions.map((suggestion, i) => {
+              // Öneriyi parçala: "Asdasd - Şarkı" -> title: "Asdasd", label: "Şarkı"
+              let primary = suggestion;
+              let secondary = '';
+              if (suggestion.includes(' - ')) {
+                const parts = suggestion.split(' - ');
+                primary = parts[0];
+                secondary = parts[1];
+              }
+
+              // İkon Belirleme
+              let IconComponent = "🔍"; // fallback generic Icon representation
+              const secLower = secondary.toLowerCase();
+              if (secLower.includes('şarkı') || secLower.includes('müzik') || secLower.includes('albüm') || secLower.includes('song')) {
+                IconComponent = "🎵";
+              } else if (secLower.includes('arama') || secLower.includes('search')) {
+                IconComponent = "🔍";
+              } else if (suggestion.startsWith('http') || suggestion.includes('.com')) {
+                IconComponent = "🌐";
+              }
+
+              return (
+                <motion.div
+                  key={i}
+                  onClick={() => {
+                    setInputValue(suggestion);
+                    handleGo(suggestion);
+                  }}
+                  whileHover={{ background: 'rgba(255,255,255,0.04)' }}
+                  style={{
+                    padding: '10px 18px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    color: 'var(--text-primary)',
+                    transition: 'background 0.1s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '15px', display: 'flex' }}>
+                      {IconComponent}
+                    </span>
+                    <span style={{ fontSize: '13.5px', fontWeight: 500 }}>{primary}</span>
+                  </div>
+                  {secondary && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {secondary}
+                    </span>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          {/* Sınır Çizgisi ve Altbilgi (Footer) */}
+          <div style={{ borderTop: '1px solid var(--border-subtle)', marginTop: '6px', paddingTop: '8px', paddingLeft: '16px' }}>
+            <motion.div
+              whileHover={{ color: 'var(--text-primary)' }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '12px',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>+</span>
+              <span>Sekme ve daha fazlasını ekleyin</span>
+            </motion.div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTabStore } from '../../store/useTabStore';
 
 export default function WebViewArea() {
-  const { tabs, activeTabId } = useTabStore();
+  const { tabs, activeTabId, activeWorkspaceId } = useTabStore();
   const activeTab = tabs.find((t) => t.id === activeTabId);
 
   // Kısayollar listesi state'i
@@ -20,7 +20,7 @@ export default function WebViewArea() {
   const [newSiteName, setNewSiteName] = useState('');
   const [newSiteUrl, setNewSiteUrl] = useState('');
 
-  const workspaceId = activeTab?.workspaceId || 'default';
+  const workspaceId = activeWorkspaceId || 'default';
   const storageKey = `aura_shortcuts_${workspaceId}`;
 
   useEffect(() => {

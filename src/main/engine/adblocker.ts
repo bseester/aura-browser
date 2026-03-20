@@ -10,6 +10,7 @@ import { session } from 'electron';
 export class AdBlocker {
   private enabled: boolean = true;
   private blockedDomains = [
+    // Reklam Ağları & Trackerlar
     '*://*.doubleclick.net/*',
     '*://partner.googleadservices.com/*',
     '*://*.googlesyndication.com/*',
@@ -23,6 +24,16 @@ export class AdBlocker {
     '*://*.taboola.com/*',
     '*://*.outbrain.com/*',
     '*://*.moatads.com/*',
+    '*://*.adform.net/*',
+    '*://*.adrol.com/*',
+    '*://*.adnxs.com/*',
+    '*://*.pubmatic.com/*',
+    '*://*.rubiconproject.com/*',
+    '*://*.casalemedia.com/*',
+    '*://*.openx.net/*',
+    '*://*.yieldmo.com/*',
+    '*://*.popads.net/*',
+    '*://*.propellerads.com/*',
   ];
 
   constructor(targetSession: Electron.Session = session.defaultSession) {

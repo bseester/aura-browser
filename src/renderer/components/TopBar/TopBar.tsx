@@ -2,7 +2,7 @@
  * TopBar — Üst çubuk bileşeni
  * İki satırdan oluşur:
  * 1. Sekme çubuğu (sürüklenebilir) + pencere kontrolleri
- * 2. Navigasyon butonları + Omnibox
+ * 2. Navigasyon butonları + Omnibox + Chrome Menü
  */
 
 import TrafficLights from './TrafficLights';
@@ -10,6 +10,7 @@ import TabStrip from './TabStrip';
 import WindowControls from './WindowControls';
 import NavigationButtons from './NavigationButtons';
 import Omnibox from './Omnibox';
+import ChromeMenu from './ChromeMenu';
 
 export default function TopBar() {
   return (
@@ -38,7 +39,7 @@ export default function TopBar() {
         <WindowControls />
       </div>
 
-      {/* Satır 2: Navigasyon + Omnibox */}
+      {/* Satır 2: Navigasyon + Omnibox + Menü */}
       <div
         style={{
           height: '40px',
@@ -50,6 +51,7 @@ export default function TopBar() {
       >
         <NavigationButtons />
         <Omnibox />
+        <ChromeMenu />
       </div>
     </div>
   );

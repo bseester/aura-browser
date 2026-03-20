@@ -33,7 +33,7 @@ async def run_test():
         # -> Navigate to http://localhost:5173
         await page.goto("http://localhost:5173")
         
-        # -> Click the 'Ayarlar' (Settings) icon to open the Settings panel (element index 107).
+        # -> Click the 'Ayarlar' (Settings) button (interactive element index 101) to open the Settings panel.
         frame = context.pages[-1]
         # Click element
         elem = frame.locator('xpath=/html/body/div/div/div[2]/div/button[8]').nth(0)

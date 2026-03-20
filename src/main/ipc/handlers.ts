@@ -14,6 +14,7 @@ import { FindInPage } from '../engine/search';
 import { AdBlocker } from '../engine/adblocker';
 import { DownloadManager } from '../engine/downloads';
 import { workspaceManager } from '../engine/workspace';
+import { getExtensionManager } from '../engine/extensions';
 import { app } from 'electron';
 
 const windowManagers = new Map<number, any>();
@@ -59,8 +60,12 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
   // ─── Sekme Yönetimi ───
 
   ipcMain.handle(IPC_CHANNELS.TAB_CREATE, (_event, url?: string) => {
+    console.log('[DEBUG] TAB_CREATE called from sender:', _event.sender.getURL());
     const tabManager = getTabManager();
-    if (!tabManager) return null;
+    if (!tabManager) {
+      console.log('[DEBUG] TAB_CREATE ABORT: tabManager is null');
+      return null;
+    }
     const tabId = tabManager.createTab(url || 'about:blank');
     return tabId;
   });
@@ -124,9 +129,14 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
   // ─── Navigasyon ───
 
   ipcMain.handle(IPC_CHANNELS.NAV_GO, (_event, url: string) => {
-    console.log('[DEBUG] IPC_CHANNELS.NAV_GO handler triggered with URL:', url);
     const tabManager = getTabManager();
-    tabManager?.goToUrl(url);
+    if (tabManager) {
+      if (tabManager.getActiveTabId() === null) {
+        tabManager.createTab(url);
+      } else {
+        tabManager.goToUrl(url);
+      }
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.NAV_BACK, () => {
@@ -145,22 +155,45 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     getTabManager()?.stop();
   });
 
+  ipcMain.handle(IPC_CHANNELS.NAV_PRINT, () => {
+    const wc = getTabManager()?.getActiveWebContents();
+    if (wc) wc.print();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.NAV_PRINT_PDF, async () => {
+    const wc = getTabManager()?.getActiveWebContents();
+    if (!wc) return;
+    try {
+      const pdf = await wc.printToPDF({});
+      const { dialog } = require('electron');
+      const { filePath } = await dialog.showSaveDialog(windowManager.getMainWindow()!, {
+        defaultPath: 'sayfa.pdf',
+        filters: [{ name: 'PDF', extensions: ['pdf'] }]
+      });
+      if (filePath) {
+        require('fs').writeFileSync(filePath, pdf);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
   // ─── Pencere Kontrolleri ───
 
   ipcMain.handle(IPC_CHANNELS.WIN_MINIMIZE, () => {
-    windowManager.minimize();
+    activeWindowManager?.minimize();
   });
 
   ipcMain.handle(IPC_CHANNELS.WIN_MAXIMIZE, () => {
-    windowManager.maximize();
+    activeWindowManager?.maximize();
   });
 
   ipcMain.handle(IPC_CHANNELS.WIN_CLOSE, () => {
-    windowManager.close();
+    activeWindowManager?.close();
   });
 
   ipcMain.handle(IPC_CHANNELS.WIN_IS_MAXIMIZED, () => {
-    return windowManager.isMaximized();
+    return activeWindowManager?.isMaximized() ?? false;
   });
 
   // ─── Geçmiş ───
@@ -227,13 +260,264 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     getTabManager()?.setSidebarPanelWidth(width);
   });
 
+  // ─── Çoklu Pencere Sync (Overlay -> Main) ───
+  ipcMain.handle('sidebar:toggle-panel', (_event, panel: string) => {
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('sidebar:on-toggle-panel', panel);
+    }
+  });
+
+  ipcMain.handle('system:navigate-router', (_event, path: string) => {
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin && !mainWin.isDestroyed()) {
+      mainWin.webContents.send('system:on-navigate-router', path);
+    }
+  });
+
+  // ─── Çalışma Alanları (Workspaces) ───
+  ipcMain.handle('workspace:get-all', () => {
+    return workspaceManager.getWorkspaces();
+  });
+
+  ipcMain.handle('workspace:get-active', () => {
+    return workspaceManager.getActiveWorkspace();
+  });
+
+  ipcMain.handle('workspace:set-active', (_event, id: string) => {
+    workspaceManager.setActiveWorkspace(id);
+    const tm = getTabManager();
+    if (tm) {
+      tm.setActiveWorkspace(id);
+    }
+  });
+
+  ipcMain.handle('workspace:add', (_event, name: string, icon?: string) => {
+    return workspaceManager.addWorkspace(name, icon);
+  });
+
+  ipcMain.handle('workspace:remove', (_event, id: string) => {
+    workspaceManager.removeWorkspace(id);
+  });
+
   // ─── Dal 4: Gelişmiş Özellikler ───
+
+  let menuOverlayWin: Electron.BrowserWindow | null = null;
+
+  ipcMain.handle('app:toggle-chrome-menu', (_event, bounds: { x: number, y: number }) => {
+    if (menuOverlayWin) {
+      menuOverlayWin.close();
+      menuOverlayWin = null;
+      return;
+    }
+    const { BrowserWindow } = require('electron');
+    const path = require('path');
+    const mainWin = windowManager.getMainWindow();
+    if (!mainWin) return;
+    
+    menuOverlayWin = new BrowserWindow({
+      width: 280,
+      height: 520,
+      x: Math.floor(bounds.x),
+      y: Math.floor(bounds.y),
+      frame: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+      hasShadow: false, // Bazı sistemlerde shadow siyah kutu yapabiliyor, kapatalım
+      resizable: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      parent: mainWin,
+      webPreferences: {
+        preload: path.join(__dirname, '../preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: false
+      }
+    });
+
+    const { app: electronApp } = require('electron');
+    const isDev = process.env.NODE_ENV === 'development' || !electronApp.isPackaged;
+    
+    const url = isDev 
+      ? 'http://localhost:5173/#/chromemenu-overlay' 
+      : `file://${path.join(__dirname, '..', '..', 'renderer', 'index.html')}#/chromemenu-overlay`;
+    
+    menuOverlayWin?.loadURL(url);
+
+    menuOverlayWin?.on('blur', () => {
+      if (menuOverlayWin && !menuOverlayWin.isDestroyed()) {
+        menuOverlayWin.close();
+        menuOverlayWin = null;
+      }
+    });
+  });
+
+  ipcMain.handle('app:close-chrome-menu', () => {
+    console.log('[DEBUG] app:close-chrome-menu called');
+    if (menuOverlayWin) {
+      menuOverlayWin.close();
+      menuOverlayWin = null;
+    }
+  });
+
+  ipcMain.handle('app:get-suggestions', async (_event, query: string) => {
+    try {
+      const response = await fetch(`https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`);
+      const data = await response.json() as any;
+      return data[1] || [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // ─── İndirme Yönetimi (Download Manager) ───
+  const activeDownloads = new Map<string, Electron.DownloadItem>();
+  const downloadHistory: any[] = [];
+
+  const { session } = require('electron');
+
+  session.defaultSession.on('will-download', (event: any, item: Electron.DownloadItem, wc: any) => {
+    const id = Date.now().toString();
+    const filename = item.getFilename();
+    const url = item.getURL();
+    const totalBytes = item.getTotalBytes();
+    const startedAt = new Date().toISOString();
+
+    activeDownloads.set(id, item);
+
+    const data = {
+      id,
+      filename,
+      url,
+      totalBytes,
+      receivedBytes: 0,
+      state: 'progressing',
+      startedAt
+    };
+
+    downloadHistory.unshift(data);
+    windowManager.getMainWindow()?.webContents.send('downloads:start', data);
+
+    item.on('updated', (_e: any, state: 'progressing' | 'interrupted') => {
+      if (state === 'interrupted') {
+        data.state = 'interrupted';
+      } else if (state === 'progressing') {
+        data.receivedBytes = item.getReceivedBytes();
+        data.state = 'progressing';
+        // Görev çubuğu ilerlemesi
+        const ratio = totalBytes > 0 ? data.receivedBytes / totalBytes : -1;
+        windowManager.getMainWindow()?.setProgressBar(ratio);
+      }
+      windowManager.getMainWindow()?.webContents.send('downloads:progress', data);
+    });
+
+    item.once('done', (_e: any, state: 'completed' | 'cancelled' | 'interrupted') => {
+      activeDownloads.delete(id);
+      data.state = state;
+      if (state === 'completed') {
+        data.receivedBytes = totalBytes;
+      }
+      windowManager.getMainWindow()?.setProgressBar(-1); // Bar'ı temizle
+      windowManager.getMainWindow()?.webContents.send('downloads:complete', data);
+    });
+  });
+
+  ipcMain.handle('downloads:get', () => downloadHistory);
+
+  ipcMain.handle('downloads:action', (_event, { id, action }: { id: string, action: 'pause' | 'resume' | 'cancel' }) => {
+    const item = activeDownloads.get(id);
+    if (!item) return false;
+
+    if (action === 'pause') item.pause();
+    else if (action === 'resume') item.resume();
+    else if (action === 'cancel') item.cancel();
+    
+    return true;
+  });
+
+  ipcMain.handle('downloads:test', () => {
+    const mainWin = windowManager.getMainWindow();
+    if (mainWin) {
+      mainWin.webContents.downloadURL('https://raw.githubusercontent.com/electron/electron/master/README.md');
+    }
+  });
+
+  ipcMain.handle('app:show-main-menu', () => {
+    const { Menu, app } = require('electron');
+    const win = windowManager.getMainWindow();
+    if (!win) return;
+    
+    const template: Electron.MenuItemConstructorOptions[] = [
+      {
+        label: 'Yeni Sekme',
+        accelerator: 'CmdOrCtrl+T',
+        click: () => getTabManager()?.createTab('about:blank')
+      },
+      {
+        label: 'Yeni Pencere',
+        accelerator: 'CmdOrCtrl+N',
+        click: () => getTabManager()?.createTab('about:blank')
+      },
+      {
+        label: 'Yeni Gizli Pencere',
+        accelerator: 'CmdOrCtrl+Shift+N',
+        click: () => {
+          const incognitoWin = new WindowManager(true);
+          const newWin = incognitoWin.createMainWindow();
+          windowManagers.set(newWin.id, incognitoWin);
+        }
+      },
+      { type: 'separator' },
+      { label: 'Yer İmleri' },
+      { label: 'Geçmiş', accelerator: 'CmdOrCtrl+H' },
+      { label: 'İndirmeler', accelerator: 'CmdOrCtrl+J' },
+      { type: 'separator' },
+      {
+        label: 'Büyüt / Küçült (Zoom)',
+        submenu: [
+          { label: 'Yakınlaştır', role: 'zoomIn' },
+          { label: 'Uzaklaştır', role: 'zoomOut' },
+          { label: 'Sıfırla', role: 'resetZoom' }
+        ]
+      },
+      { type: 'separator' },
+      {
+        label: 'Yazdır...',
+        accelerator: 'CmdOrCtrl+P',
+        click: () => getTabManager()?.getActiveWebContents()?.print()
+      },
+      { type: 'separator' },
+      {
+        label: 'Ayarlar',
+        click: () => {
+           // Ayarları şimdilik yeni sekmede yerel dosya olarak açabilir veya React'a sinyal gönderebiliriz.
+           getTabManager()?.createTab('http://localhost:5173/#/settings');
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Çıkış',
+        click: () => app.quit()
+      }
+    ];
+
+    const menu = Menu.buildFromTemplate(template);
+    menu.popup({ window: win });
+  });
 
   ipcMain.handle('app:new-incognito-window', () => {
     // Yeni bir gizli WindowManager başlat
     const incognitoWin = new WindowManager(true);
     const win = incognitoWin.createMainWindow();
     windowManagers.set(win.id, incognitoWin);
+
+    win.on('closed', () => {
+      windowManagers.delete(win.id);
+      if (activeWindowManager === incognitoWin) {
+        activeWindowManager = windowManager; // Geri ana pencereye dön
+      }
+    });
   });
 
   ipcMain.handle('adblock:toggle', () => {
@@ -272,5 +556,30 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
 
   ipcMain.handle('workspace:remove', (_event, id: string) => {
     workspaceManager.removeWorkspace(id);
+  });
+
+  // ─── Eklentiler ───
+
+  const extensionManager = getExtensionManager();
+
+  // Uygulama başlangıcında eklentileri geri yükle
+  extensionManager.restoreExtensions().catch((err) => {
+    console.error('[IPC] Eklenti geri yükleme hatası:', err);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXTENSION_LOAD, async () => {
+    return extensionManager.loadFromDialog();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXTENSION_REMOVE, async (_event, extensionId: string) => {
+    return extensionManager.removeExtension(extensionId);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXTENSION_LIST, () => {
+    return extensionManager.getLoadedExtensions();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.EXTENSION_INSTALL_CRX, async (_event, extensionId: string) => {
+    return extensionManager.installCrx(extensionId);
   });
 }

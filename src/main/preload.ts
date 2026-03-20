@@ -64,6 +64,8 @@ const electronAPI = {
       ipcRenderer.on(IPC_CHANNELS.NAV_TITLE_UPDATED, listener);
       return () => ipcRenderer.removeListener(IPC_CHANNELS.NAV_TITLE_UPDATED, listener);
     },
+    print: () => ipcRenderer.invoke(IPC_CHANNELS.NAV_PRINT),
+    printToPDF: () => ipcRenderer.invoke(IPC_CHANNELS.NAV_PRINT_PDF),
   },
 
   // ─── Pencere Kontrolleri ───
@@ -98,27 +100,6 @@ const electronAPI = {
     remove: (id: number) => ipcRenderer.invoke(IPC_CHANNELS.BOOKMARKS_REMOVE, id),
   },
 
-  // ─── İndirmeler ───
-  downloads: {
-    get: (limit?: number) => ipcRenderer.invoke('downloads:get'),
-    test: () => ipcRenderer.invoke('downloads:test'),
-    onStart: (callback: (data: any) => void) => {
-      const listener = (_e: any, d: any) => callback(d);
-      ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_START, listener);
-      return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_START, listener);
-    },
-    onProgress: (callback: (data: any) => void) => {
-      const listener = (_e: any, d: any) => callback(d);
-      ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
-      return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_PROGRESS, listener);
-    },
-    onComplete: (callback: (data: any) => void) => {
-      const listener = (_e: any, d: any) => callback(d);
-      ipcRenderer.on(IPC_CHANNELS.DOWNLOAD_COMPLETE, listener);
-      return () => ipcRenderer.removeListener(IPC_CHANNELS.DOWNLOAD_COMPLETE, listener);
-    },
-  },
-
   // ─── Sayfa İçi Arama ───
   find: {
     inPage: (text: string) =>
@@ -130,6 +111,36 @@ const electronAPI = {
   // ─── Dal 4: Gelişmiş Özellikler ───
   system: {
     newIncognitoWindow: () => ipcRenderer.invoke('app:new-incognito-window'),
+    showMainMenu: () => ipcRenderer.invoke('app:show-main-menu'),
+    toggleChromeMenu: (bounds: { x: number, y: number }) => ipcRenderer.invoke('app:toggle-chrome-menu', bounds),
+    closeChromeMenu: () => ipcRenderer.invoke('app:close-chrome-menu'),
+    getSuggestions: (query: string) => ipcRenderer.invoke('app:get-suggestions', query),
+    navigateMainRouter: (path: string) => ipcRenderer.invoke('system:navigate-router', path),
+    onNavigateMainRouter: (callback: (path: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: string) => callback(data);
+      ipcRenderer.on('system:on-navigate-router', listener);
+      return () => { ipcRenderer.removeListener('system:on-navigate-router', listener); };
+    },
+  },
+  downloads: {
+    get: () => ipcRenderer.invoke('downloads:get'),
+    test: () => ipcRenderer.invoke('downloads:test'),
+    action: (id: string, action: 'pause' | 'resume' | 'cancel') => ipcRenderer.invoke('downloads:action', { id, action }),
+    onStart: (cb: any) => {
+      const listener = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('downloads:start', listener);
+      return () => ipcRenderer.removeListener('downloads:start', listener);
+    },
+    onProgress: (cb: any) => {
+      const listener = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('downloads:progress', listener);
+      return () => ipcRenderer.removeListener('downloads:progress', listener);
+    },
+    onComplete: (cb: any) => {
+      const listener = (_e: any, data: any) => cb(data);
+      ipcRenderer.on('downloads:complete', listener);
+      return () => ipcRenderer.removeListener('downloads:complete', listener);
+    },
   },
   adblock: {
     toggle: () => ipcRenderer.invoke('adblock:toggle'),
@@ -144,6 +155,18 @@ const electronAPI = {
   },
   sidebar: {
     setPanelWidth: (width: number) => ipcRenderer.invoke('sidebar:set-width', width),
+    togglePanel: (panel: string) => ipcRenderer.invoke('sidebar:toggle-panel', panel),
+    onTogglePanel: (callback: (panel: string) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: string) => callback(data);
+      ipcRenderer.on('sidebar:on-toggle-panel', listener);
+      return () => { ipcRenderer.removeListener('sidebar:on-toggle-panel', listener); };
+    },
+  },
+  extensions: {
+    load: () => ipcRenderer.invoke(IPC_CHANNELS.EXTENSION_LOAD),
+    remove: (extensionId: string) => ipcRenderer.invoke(IPC_CHANNELS.EXTENSION_REMOVE, extensionId),
+    list: () => ipcRenderer.invoke(IPC_CHANNELS.EXTENSION_LIST),
+    installCrx: (extensionId: string) => ipcRenderer.invoke(IPC_CHANNELS.EXTENSION_INSTALL_CRX, extensionId),
   },
 
   // ─── Platform Bilgisi ───
@@ -155,3 +178,54 @@ contextBridge.exposeInMainWorld('electronAPI', electronAPI);
 
 // TypeScript tipi — renderer tarafında kullanılacak
 export type ElectronAPI = typeof electronAPI;
+
+// ─── Web Mağazası Interception ───
+declare const window: any;
+declare const document: any;
+declare const setInterval: any;
+
+if (typeof window !== 'undefined' && window.location.hostname.includes('chromewebstore.google.com')) {
+  // Orijinal butonu tetiklemek yerine sayfanın sağ üstüne kendi Ekle butonumuzu yerleştiriyoruz
+  setInterval(() => {
+    if (!document || !document.documentElement) return; // DOM henüz yüklenmediyse bekle
+    // Chrome'a geçin uyarı bantlarını gizle
+    const alerts = document.querySelectorAll('div[role="alert"], div.msg-container, header');
+    alerts.forEach((alert: any) => {
+      if (alert.innerText && alert.innerText.includes('Chrome')) {
+        alert.style.display = 'none';
+      }
+    });
+
+    // Zaten butonumuzu eklediysek çık
+    if (document.getElementById('aura-install-btn')) return;
+
+    const match = window.location.pathname.match(/\/([a-z]{32})(\/|$|\?)/);
+    if (!match) return;
+
+    const id = match[1];
+    
+    // Web store kendi DOM'unu manipüle edebildiği için Body yerine document.documentElement'e asıyoruz
+    const btn = document.createElement('button');
+    btn.id = 'aura-install-btn';
+    btn.innerText = '✨ Aura Tarayıcıya Ekle';
+
+    // CSS styling tab-manager.ts üzerinden insertCSS ile yapılır (CSP kısıtlamalarını aşmak için)
+
+    btn.onclick = () => {
+      btn.innerText = 'İndiriliyor... Lütfen Bekleyin ⏳';
+      
+      ipcRenderer.invoke(IPC_CHANNELS.EXTENSION_INSTALL_CRX, id).then((ext) => {
+        if (ext) {
+          btn.innerText = '✅ Başarıyla Kuruldu!';
+          setTimeout(() => { btn.style.display = 'none'; }, 5000);
+        } else {
+          btn.innerText = '❌ Hata Oluştu';
+          setTimeout(() => { btn.innerText = '✨ Aura Tarayıcıya Ekle'; }, 3000);
+        }
+      });
+    };
+    
+    // Web store React shadow dom vb siliyorsa, en dış objeye html etiketine ekle 
+    document.documentElement.appendChild(btn);
+  }, 1000);
+}

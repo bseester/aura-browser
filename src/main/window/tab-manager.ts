@@ -46,6 +46,12 @@ export class TabManager {
    * Yeni sekme oluşturur ve WebContentsView'ı pencereye ekler
    */
   createTab(url: string = 'about:blank', workspaceId: string = this.activeWorkspace): number {
+    const fs = require('fs');
+    const logPath = 'C:\\Users\\bseester\\tarayıcı\\nav_log.txt';
+    try {
+      fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] createTab called with url="${url}" workspaceId="${workspaceId}"\n`);
+    } catch {}
+
     const tabId = ++this.tabCounter;
 
     // Dal 4: Gizli sekme veya standart partition
@@ -58,6 +64,7 @@ export class TabManager {
         sandbox: true,
         webviewTag: false,
         partition,
+        plugins: true,
       },
     });
 
@@ -134,6 +141,23 @@ export class TabManager {
     }
   }
 
+  /**
+   * Aktif çalışma alanını değiştirir ve sekmeleri filtreler
+   */
+  setActiveWorkspace(workspaceId: string): void {
+    this.activeWorkspace = workspaceId;
+    
+    // Aktif workspace'e ait bir tab var mı kontrol et
+    const workspaceTabs = this.tabOrder.filter(id => this.tabWorkspaces.get(id) === workspaceId);
+    if (workspaceTabs.length > 0) {
+      this.switchToTab(workspaceTabs[workspaceTabs.length - 1]);
+    } else {
+      this.activeTabId = null;
+    }
+
+    this.notifyTabUpdate();
+  }
+
   closeTabsToRight(tabId: number): void {
     const index = this.tabOrder.indexOf(tabId);
     if (index === -1) return;
@@ -149,7 +173,18 @@ export class TabManager {
    * Aktif sekmeyi değiştirir
    */
   switchToTab(tabId: number): void {
-    if (!this.tabs.has(tabId)) return;
+    const fs = require('fs');
+    const logPath = 'C:\\Users\\bseester\\tarayıcı\\nav_log.txt';
+    try {
+      fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] switchToTab called with tabId=${tabId}. Previous activeTabId=${this.activeTabId}\n`);
+    } catch {}
+
+    if (!this.tabs.has(tabId)) {
+      try {
+        fs.appendFileSync(logPath, `[${new Date().toISOString()}] switchToTab ABORT: tabs map doesn't contain ${tabId}\n`);
+      } catch {}
+      return;
+    }
 
     // Önceki aktif sekmeyi gizle
     if (this.activeTabId !== null && this.activeTabId !== tabId) {
@@ -184,9 +219,6 @@ export class TabManager {
     if (!view) return;
 
     const bounds = this.mainWindow.getContentBounds();
-    const TOP_BAR_HEIGHT = 80;
-    const SIDEBAR_WIDTH = 52 + this.sidebarPanelWidth;
-
     const url = view.webContents.getURL();
     if (url === 'about:blank' || url === '') {
       // React tabanlı Hızlı Erişim / Yeni Sekme ekranının görünmesi ve tıklanabilmesi için gizle
@@ -194,13 +226,14 @@ export class TabManager {
       return;
     }
 
-    console.log('[DEBUG] resizeActiveTab invoked. bounds:', { x: SIDEBAR_WIDTH, width: bounds.width - SIDEBAR_WIDTH });
+    const TOPBAR_HEIGHT = 80; // TopBar (40px) + WindowControls (40px)
+    const SIDEBAR_WIDTH = 52 + this.sidebarPanelWidth;
 
     view.setBounds({
       x: SIDEBAR_WIDTH,
-      y: TOP_BAR_HEIGHT,
+      y: TOPBAR_HEIGHT,
       width: bounds.width - SIDEBAR_WIDTH,
-      height: bounds.height - TOP_BAR_HEIGHT,
+      height: bounds.height - TOPBAR_HEIGHT,
     });
   }
 
@@ -250,16 +283,16 @@ export class TabManager {
     
     // Asenkron race-condition'ı önlemek için burada doğrudan genişletiyoruz
     const bounds = this.mainWindow.getContentBounds();
-    const TOP_BAR_HEIGHT = 80;
+    const TOPBAR_HEIGHT = 80;
     const SIDEBAR_WIDTH = 52 + this.sidebarPanelWidth;
 
     const view = this.tabs.get(this.activeTabId!);
     if (view) {
       view.setBounds({
         x: SIDEBAR_WIDTH,
-        y: TOP_BAR_HEIGHT,
+        y: TOPBAR_HEIGHT,
         width: bounds.width - SIDEBAR_WIDTH,
-        height: bounds.height - TOP_BAR_HEIGHT,
+        height: bounds.height - TOPBAR_HEIGHT,
       });
     }
   }
@@ -338,6 +371,190 @@ export class TabManager {
    * WebContents olaylarını dinler ve Renderer'a bildirim gönderir
    */
   private attachWebContentsListeners(tabId: number, wc: WebContents): void {
+    wc.on('did-finish-load', () => {
+      const url = wc.getURL();
+      if (url.includes('chromewebstore.google.com/detail/')) {
+        // Extension ID'yi URL'den ayıkla (Örn: .../detail/name/ID)
+        const parts = url.split('/');
+        const extensionId = parts[parts.length - 1]?.split('?')[0];
+
+        if (extensionId && extensionId.length > 20) {
+          // CSS Enjeksiyonu
+          wc.insertCSS(`
+            #aura-install-btn {
+              position: fixed !important;
+              top: 80px !important;
+              right: 48px !important;
+              z-index: 2147483647 !important;
+              background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+              color: white !important;
+              padding: 12px 24px !important;
+              border-radius: 12px !important;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+              font-size: 14px !important;
+              font-weight: 600 !important;
+              cursor: pointer !important;
+              border: 1px solid rgba(255,255,255,0.2) !important;
+              box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.5) !important;
+              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+              display: flex !important;
+              align-items: center !important;
+              gap: 8px !important;
+            }
+            #aura-install-btn:hover {
+              transform: translateY(-2px) !important;
+              box-shadow: 0 15px 30px -5px rgba(79, 70, 229, 0.6) !important;
+              filter: brightness(1.1) !important;
+            }
+            #aura-install-btn:active {
+              transform: translateY(0) !important;
+            }
+            #aura-install-btn.loading {
+              opacity: 0.7 !important;
+              cursor: wait !important;
+            }
+          `);
+
+          // JS Enjeksiyonu (Button Ekleme & Click Listener)
+          wc.executeJavaScript(`
+            (function() {
+              if (document.getElementById('aura-install-btn')) return;
+              const btn = document.createElement('button');
+              btn.id = 'aura-install-btn';
+              btn.innerHTML = '<span>➕</span> Aura Browser\\'a Ekle';
+              
+              btn.onclick = async () => {
+                if (btn.classList.contains('loading')) return;
+                btn.classList.add('loading');
+                btn.innerHTML = '<span>⏳</span> Yükleniyor...';
+                
+                try {
+                  // Preload'daki window.electronAPI veya direkt ipcRenderer üzerinden çağrım
+                  const result = await window.ipcRenderer.invoke('extensions:install-crx', '${extensionId}');
+                  if (result) {
+                    btn.style.background = '#10b981';
+                    btn.innerHTML = '<span>✅</span> Eklendi';
+                  } else {
+                    btn.innerHTML = '<span>❌</span> Hata Oluştu';
+                    btn.classList.remove('loading');
+                  }
+                } catch (err) {
+                  console.error('Installation failed:', err);
+                  btn.innerHTML = '<span>❌</span> Başarısız';
+                  btn.classList.remove('loading');
+                }
+              };
+              document.body.appendChild(btn);
+            })();
+          `);
+        }
+      }
+    });
+
+    // ─── Native Context Menu (Dinamik Sağ Tık) ───
+    wc.on('context-menu', (_event, params) => {
+      const { Menu, clipboard } = require('electron');
+      const template: Electron.MenuItemConstructorOptions[] = [];
+
+      if (params.linkURL) {
+        template.push({
+          label: 'Bağlantıyı Yeni Sekmede Aç',
+          click: () => this.createTab(params.linkURL)
+        });
+        template.push({
+          label: 'Bağlantıyı Gizli Sekmede Aç',
+          click: () => {
+            // Placeholder: Gelecekte Gizli sekme IPC'sine bağlanabilir
+          }
+        });
+        template.push({ type: 'separator' });
+        template.push({
+          label: 'Bağlantı Adresini Kopyala',
+          click: () => clipboard.writeText(params.linkURL)
+        });
+      }
+
+      if (params.hasImageContents) {
+        if (params.linkURL) template.push({ type: 'separator' });
+        template.push({
+          label: 'Resmi Yeni Sekmede Aç',
+          click: () => this.createTab(params.srcURL)
+        });
+        template.push({
+          label: 'Resim Adresini Kopyala',
+          click: () => clipboard.writeText(params.srcURL)
+        });
+        template.push({
+          label: 'Resmi Google Lens İle Ara',
+          click: () => this.createTab(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(params.srcURL)}`)
+        });
+      }
+
+      if (params.selectionText) {
+        if (template.length > 0) template.push({ type: 'separator' });
+        template.push({ role: 'copy', label: 'Kopyala' });
+        template.push({
+          label: `${params.selectionText.substring(0, 15)}... için Google'da ara`,
+          click: () => this.createTab(`https://www.google.com/search?q=${encodeURIComponent(params.selectionText)}`)
+        });
+      } else if (params.isEditable) {
+        // Metin kutusundaysak
+        template.push({ role: 'undo', label: 'Geri Al' });
+        template.push({ role: 'redo', label: 'Yinele' });
+        template.push({ type: 'separator' });
+        template.push({ role: 'cut', label: 'Kes' });
+        template.push({ role: 'copy', label: 'Kopyala' });
+        template.push({ role: 'paste', label: 'Yapıştır' });
+        template.push({ role: 'selectAll', label: 'Tümünü Seç' });
+        
+        // Yazım denetimi önerileri eklenebilir (önce spellchecker api'den geliyor)
+        if (params.dictionarySuggestions.length > 0) {
+          template.push({ type: 'separator' });
+          for (const suggestion of params.dictionarySuggestions) {
+            template.push({
+              label: suggestion,
+              click: () => wc.replaceMisspelling(suggestion)
+            });
+          }
+          template.push({
+            label: 'Sözlüğe Ekle',
+            click: () => wc.session.addWordToSpellCheckerDictionary(params.misspelledWord)
+          });
+        }
+      }
+
+      // Standart Sayfa İşlemleri (Hiçbir şeye tıklanmadıysa)
+      if (!params.linkURL && !params.hasImageContents && !params.selectionText && !params.isEditable) {
+        template.push({
+          label: 'Geri',
+          enabled: wc.navigationHistory.canGoBack(),
+          click: () => wc.navigationHistory.goBack()
+        });
+        template.push({
+          label: 'İleri',
+          enabled: wc.navigationHistory.canGoForward(),
+          click: () => wc.navigationHistory.goForward()
+        });
+        template.push({
+          label: 'Yeniden Yükle',
+          click: () => wc.reload()
+        });
+        template.push({ type: 'separator' });
+        template.push({
+          label: 'Yazdır...',
+          click: () => wc.print()
+        });
+        template.push({ type: 'separator' });
+        template.push({
+          label: 'İncele (DevTools)',
+          click: () => wc.openDevTools({ mode: 'detach' })
+        });
+      }
+
+      const menu = Menu.buildFromTemplate(template);
+      menu.popup();
+    });
+
     wc.on('did-start-loading', () => {
       this.sendToRenderer(IPC_CHANNELS.NAV_LOADING, { tabId, isLoading: true });
     });
@@ -381,6 +598,65 @@ export class TabManager {
       this.createTab(url);
       return { action: 'deny' };
     });
+
+    // Yazım denetimi ve bağlam menüsü (Context Menu)
+    wc.on('context-menu', (event, params) => {
+      import('electron').then(({ Menu, clipboard }) => {
+        const template: Electron.MenuItemConstructorOptions[] = [];
+        
+        // --- 1. Yazım Denetimi Önerileri ---
+        if (params.dictionarySuggestions && params.dictionarySuggestions.length > 0) {
+          params.dictionarySuggestions.forEach(suggestion => {
+            template.push({
+              label: suggestion,
+              click: () => wc.replaceMisspelling(suggestion)
+            });
+          });
+          template.push({ type: 'separator' });
+          
+          template.push({
+            label: 'Sözlüğe Ekle',
+            click: () => wc.session.addWordToSpellCheckerDictionary(params.misspelledWord)
+          });
+          template.push({ type: 'separator' });
+        }
+
+        // --- 2. Bağlantı (Link) Seçenekleri ---
+        if (params.linkURL) {
+          template.push({
+            label: 'Bağlantıyı Yeni Sekmede Aç',
+            click: () => this.createTab(params.linkURL)
+          });
+          template.push({
+            label: 'Bağlantı Adresini Kopyala',
+            click: () => clipboard.writeText(params.linkURL)
+          });
+          template.push({ type: 'separator' });
+        }
+
+        // --- 3. Standart Düzenleme Seçenekleri ---
+        if (params.editFlags.canCopy) template.push({ role: 'copy', label: 'Kopyala' });
+        if (params.editFlags.canPaste) template.push({ role: 'paste', label: 'Yapıştır' });
+        if (params.editFlags.canSelectAll) template.push({ role: 'selectAll', label: 'Tümünü Seç' });
+        
+        if (template.length > 0) {
+          const menu = Menu.buildFromTemplate(template);
+          menu.popup();
+        }
+      });
+    });
+
+    // Ana Pencereden Bağımsız Kısayol Dinleyicisi (Örn: WebContent'e tıklanmışken Ctrl+P çalışması için)
+    wc.on('before-input-event', (event, input) => {
+      // Ctrl+P veya Cmd+P yazdır komutu
+      if ((input.control || input.meta) && input.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        wc.print();
+        return;
+      }
+      
+      // Gerekirse Ctrl+F (Sayfa içi arama) IPC çağrısı yapılabilir
+    });
   }
 
   /**
@@ -401,6 +677,7 @@ export class TabManager {
     this.sendToRenderer(IPC_CHANNELS.TAB_UPDATE, {
       tabs: this.getTabList(),
       activeTabId: this.activeTabId,
+      activeWorkspaceId: this.activeWorkspace,
     });
   }
 

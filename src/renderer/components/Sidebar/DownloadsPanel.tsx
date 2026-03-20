@@ -92,6 +92,33 @@ export default function DownloadsPanel() {
                 </div>
               )}
 
+              {/* Kontrol Butonları */}
+              {!isFinished && (
+                <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                  {item.state === 'progressing' ? (
+                    <button
+                      onClick={() => window.electronAPI?.downloads?.action(item.id, 'pause')}
+                      style={{ flex: 1, padding: '4px', fontSize: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      ⏸ Duraklat
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => window.electronAPI?.downloads?.action(item.id, 'resume')}
+                      style={{ flex: 1, padding: '4px', fontSize: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', borderRadius: '4px', cursor: 'pointer' }}
+                    >
+                      ▶️ Devam Et
+                    </button>
+                  )}
+                  <button
+                    onClick={() => window.electronAPI?.downloads?.action(item.id, 'cancel')}
+                    style={{ flex: 1, padding: '4px', fontSize: '10px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-subtle)', color: 'var(--danger)', borderRadius: '4px', cursor: 'pointer' }}
+                  >
+                    ✕ İptal
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)' }}>
                 <span>{item.state === 'progressing' ? `${formatBytes(item.receivedBytes)} / ${formatBytes(item.totalBytes)}` : formatBytes(item.totalBytes)}</span>
                 <span>{new Date(item.startedAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}</span>

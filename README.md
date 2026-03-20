@@ -35,4 +35,22 @@ npm run package:win
 *Not: Sembolik link (symlink) hatalarını önlemek için terminalinizi **Yönetici olarak** veya Windows **Geliştirici Modu** açıkken çalıştırmanız önerilir.*
 
 ---
+
+## 🔧 Son Gelişmeler ve İyileştirmeler
+
+Bu başlık altında son yapılan görsel, işlevsel ve kararlılık güncellemeleri listelenmektedir:
+
+### 🔍 1. Adres Çubuğu (Omnibox) & Öneriler
+- **Dinamik İkonlar:** Arama önerileri tipine göre (**🎵 Müzik**, **🌐 Web**, **🔍 Arama**) otomatik rozet kazanır.
+- **Split Metin Alanı:** Okunabilirliği artırmak adına öneriler iki satıra bölünür.
+- **AI Entegrasyonu:** Adres çubuğu içine estetik ve hover animasyonlu bir **✨ AI** butonu eklendi.
+
+### 🛡️ 2. Sekme & Navigasyon Güvenliği
+- **Otomatik Düzeltme Fall-back:** Boş sekmelerde veya kilitlenmelerde `activeTabId` null dahi olsa arama kilitlenmesi yaşanmaz, otomatik sekme yaratılır.
+
+### 🎛️ 3. 3-Nokta Menü (Chrome Menu Overlay)
+- **Güvenceli Çalışma Modu:** Overlay pencerelerinde (`sandbox: false`) standartları uygulanarak sayfa içi çakışmalar giderildi.
+- **Dinamik Port Çözümleme:** Geliştirme ortamında (`npm run dev`) overlay dosyalarının yüklenememe hatası giderildi.
+
+---
 İyi kullanımlar! 🌈

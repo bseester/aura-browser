@@ -21,6 +21,8 @@ export const IPC_CHANNELS = {
   NAV_URL_UPDATED: 'nav:url-updated', // main → renderer bildirim
   NAV_LOADING: 'nav:loading',         // main → renderer bildirim
   NAV_TITLE_UPDATED: 'nav:title-updated',
+  NAV_PRINT: 'nav:print',
+  NAV_PRINT_PDF: 'nav:print-pdf',
 
   // ─── Pencere Kontrolleri ───
   WIN_MINIMIZE: 'win:minimize',
@@ -49,6 +51,12 @@ export const IPC_CHANNELS = {
   WORKSPACE_LIST: 'workspace:list',
   WORKSPACE_CREATE: 'workspace:create',
   WORKSPACE_SWITCH: 'workspace:switch',
+
+  // ─── Eklentiler ───
+  EXTENSION_LOAD: 'extension:load',
+  EXTENSION_REMOVE: 'extension:remove',
+  EXTENSION_LIST: 'extension:list',
+  EXTENSION_INSTALL_CRX: 'extension:install-crx',
 
   // ─── Genel ───
   APP_INFO: 'app:info',

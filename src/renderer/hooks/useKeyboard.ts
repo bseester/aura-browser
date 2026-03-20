@@ -41,6 +41,18 @@ export function useKeyboard({ onFind, onEscape }: UseKeyboardProps) {
         }
       }
 
+      // Ctrl+Shift+N (Yeni Gizli Pencere)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        window.electronAPI?.system?.newIncognitoWindow();
+      }
+
+      // Ctrl+P veya Cmd+P (Yazdır)
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        window.electronAPI?.nav.print();
+      }
+
       // Ctrl+Tab / Ctrl+Shift+Tab (Sekmeler Arası Geçiş)
       if (e.ctrlKey && !e.metaKey && e.key === 'Tab') {
         e.preventDefault();

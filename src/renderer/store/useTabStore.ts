@@ -22,7 +22,8 @@ export interface Tab {
 interface TabState {
   tabs: Tab[];
   activeTabId: number | null;
-  setTabs: (tabs: Tab[], activeTabId: number | null) => void;
+  activeWorkspaceId: string; // Added
+  setTabs: (tabs: Tab[], activeTabId: number | null, activeWorkspaceId?: string) => void;
   updateTabUrl: (tabId: number, url: string) => void;
   updateTabTitle: (tabId: number, title: string) => void;
   updateTabLoading: (tabId: number, isLoading: boolean) => void;
@@ -32,9 +33,14 @@ interface TabState {
 export const useTabStore = create<TabState>((set) => ({
   tabs: [],
   activeTabId: null,
+  activeWorkspaceId: 'default', // Added
 
-  setTabs: (tabs, activeTabId) =>
-    set({ tabs, activeTabId }),
+  setTabs: (tabs, activeTabId, activeWorkspaceId) =>
+    set((state) => ({ 
+      tabs, 
+      activeTabId, 
+      activeWorkspaceId: activeWorkspaceId || state.activeWorkspaceId 
+    })),
 
   updateTabUrl: (tabId, url) =>
     set((state) => ({

@@ -9,6 +9,8 @@ export default function WorkspacesPanel() {
   const [workspaces, setWorkspaces] = useState<any[]>([]);
   const [activeWait, setActiveWait] = useState<string>('default');
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [selectedEmoji, setSelectedEmoji] = useState('📂');
+  const emojis = ['📂', '💼', '🏠', '🎮', '💡', '🎨', '🎵', '✨'];
 
   const loadWorkspaces = () => {
     const api = window.electronAPI;
@@ -29,7 +31,7 @@ export default function WorkspacesPanel() {
 
   const handleAdd = async () => {
     if (!newWorkspaceName.trim()) return;
-    await window.electronAPI?.workspace.add(newWorkspaceName.trim(), '📂');
+    await window.electronAPI?.workspace.add(newWorkspaceName.trim(), selectedEmoji);
     setNewWorkspaceName('');
     loadWorkspaces();
   };
@@ -84,8 +86,33 @@ export default function WorkspacesPanel() {
         ))}
       </AnimatePresence>
 
+      {/* Emoji Seçici */}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px', padding: '6px', background: 'rgba(255,255,255,0.02)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+        {emojis.map((emoji) => (
+          <motion.div
+            key={emoji}
+            onClick={() => setSelectedEmoji(emoji)}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            style={{
+              padding: '6px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              background: selectedEmoji === emoji ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+              border: selectedEmoji === emoji ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid transparent',
+              fontSize: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            {emoji}
+          </motion.div>
+        ))}
+      </div>
+
       {/* Çalışma Alanı Ekleme Formu */}
-      <div style={{ marginTop: '12px', display: 'flex', gap: '6px' }}>
+      <div style={{ marginTop: '8px', display: 'flex', gap: '6px' }}>
         <input
           value={newWorkspaceName}
           onChange={(e) => setNewWorkspaceName(e.target.value)}
