@@ -543,6 +543,32 @@ function PrivacySection({
           />
           <ToggleSwitch enabled={adblockEnabled} onToggle={onToggleAdblock} />
         </div>
+
+        {/* Dashboard Button */}
+        <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-subtle)', paddingTop: '12px' }}>
+          <motion.button
+            whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.03)' }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => window.electronAPI?.tabs?.create('chrome-extension://cjpalhdlnbpafiamejdnhcphjbkeiagm/dashboard.html')}
+            style={{
+              padding: '10px 16px',
+              background: 'transparent',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-primary)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontFamily: 'Inter, sans-serif',
+            }}
+          >
+            🛡️ uBlock Origin Kontrol Paneli’ni Aç
+          </motion.button>
+        </div>
       </SettingCard>
 
       {/* Verileri Temizle */}

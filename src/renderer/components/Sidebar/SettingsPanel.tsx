@@ -66,48 +66,72 @@ export default function SettingsPanel() {
           border: '1px solid var(--border-subtle)',
           borderRadius: 'var(--radius-md)',
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          flexDirection: 'column',
+          gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-            Reklam Engelleyici (AdBlock)
-          </span>
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-            Zararlı reklamları ve analizleri engeller.
-          </span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+              Reklam Engelleyici (AdBlock)
+            </span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              Zararlı reklamları ve analizleri engeller.
+            </span>
+          </div>
+
+          {/* Toggle Switch */}
+          <div 
+            onClick={handleToggleAdblock}
+            data-testid="adblock-toggle"
+            style={{
+              width: '40px',
+              height: '24px',
+              borderRadius: '12px',
+              background: adblockEnabled ? '#10b981' : 'var(--border-strong)',
+              position: 'relative',
+              cursor: 'pointer',
+              transition: 'background 0.3s ease',
+              flexShrink: 0,
+            }}
+          >
+            <motion.div
+              data-testid="adblock-knob"
+              animate={{ x: adblockEnabled ? 18 : 2 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '50%',
+                background: '#fff',
+                position: 'absolute',
+                top: '2px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+              }}
+            />
+          </div>
         </div>
 
-        {/* Toggle Switch */}
-        <div 
-          onClick={handleToggleAdblock}
-          data-testid="adblock-toggle"
+        {/* Dashboard Button */}
+        <motion.button
+          onClick={() => window.electronAPI?.tabs?.create('chrome-extension://cjpalhdlnbpafiamejdnhcphjbkeiagm/dashboard.html')}
+          whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.08)' }}
+          whileTap={{ scale: 0.98 }}
           style={{
-            width: '40px',
-            height: '24px',
-            borderRadius: '12px',
-            background: adblockEnabled ? '#10b981' : 'var(--border-strong)',
-            position: 'relative',
+            padding: '8px 12px',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid var(--border-subtle)',
+            borderRadius: 'var(--radius-sm)',
+            color: 'var(--text-primary)',
+            fontSize: '12px',
             cursor: 'pointer',
-            transition: 'background 0.3s ease',
+            width: '100%',
+            textAlign: 'center',
+            fontFamily: 'Inter, sans-serif',
           }}
         >
-          <motion.div
-            data-testid="adblock-knob"
-            animate={{ x: adblockEnabled ? 18 : 2 }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-            style={{
-              width: '20px',
-              height: '20px',
-              borderRadius: '50%',
-              background: '#fff',
-              position: 'absolute',
-              top: '2px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-            }}
-          />
-        </div>
+          🛡️ uBlock Origin Kontrol Paneli
+        </motion.button>
       </div>
 
     </div>

@@ -7,6 +7,7 @@
 - **Bookmark Star Button**: Added to the Omnibox (address bar) to toggle bookmarking of the current page. Uses Lucide `Star` icon with filled/outline state.
 - **Improved Omnibox Layout**: Star button placed next to the AI button on the right edge.
 - **uBlock Origin**: Integrated as a default core extension that loads automatically on startup for robust ad-blocking.
+- **uBlock Dashboard Button**: Added buttons inside Settings Panel and sidebar to open the extension control panel in a full tab.
 
 ### Packaging
 - **Windows Installer**: Packaged into `release/Aura Browser Setup 1.3.1.exe`.
