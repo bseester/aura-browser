@@ -607,4 +607,26 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     const callback = tm.contextMenuCallbacks.get(id);
     if (callback) callback();
   });
+
+  // ─── Performans ve Kaynak Yönetimi ───
+  ipcMain.handle('system:set-network-limit', (_event, limitMbps: number) => {
+    const { session } = require('electron');
+    if (limitMbps === 0) {
+      session.defaultSession.disableNetworkEmulation();
+      console.log('[Network] Bandwidth throttling disabled');
+    } else {
+      const bps = (limitMbps * 1024 * 1024) / 8;
+      session.defaultSession.enableNetworkEmulation({
+        offline: false,
+        latency: 0,
+        downloadThroughput: bps,
+        uploadThroughput: bps,
+      });
+      console.log(`[Network] Bandwidth limited to ${limitMbps} Mbps (${bps} Bps)`);
+    }
+  });
+
+  ipcMain.handle('system:set-ram-snooze', (_event, minutes: number) => {
+    getTabManager()?.setRamSnoozeTime(minutes);
+  });
 }

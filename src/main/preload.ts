@@ -124,6 +124,8 @@ const electronAPI = {
       return () => { ipcRenderer.removeListener('system:on-navigate-router', listener); };
     },
     checkUpdate: () => ipcRenderer.invoke('app:check-update'),
+    setNetworkLimit: (limit: number) => ipcRenderer.invoke('system:set-network-limit', limit),
+    setRamSnooze: (minutes: number) => ipcRenderer.invoke('system:set-ram-snooze', minutes),
   },
   downloads: {
     get: () => ipcRenderer.invoke('downloads:get'),

@@ -37,12 +37,18 @@ export class TabManager {
   public activeWorkspace: string = 'default';
   private sidebarPanelWidth: number = 0;
   private onNavigateCallback?: (url: string, title: string) => void;
-  public contextMenuCallbacks = new Map<string, () => void>(); // Custom HTML ContextMenu callback map
+  private contextMenuCallbacks = new Map<string, () => void>(); // Custom HTML ContextMenu callback map
   private pinnedTabIds: Set<number> = new Set();
+  private ramSnoozeMinutes: number = 0;
+  private tabLastAccessed: Map<number, number> = new Map();
+  private snoozedTabs: Set<number> = new Set();
+  private tabUrls: Map<number, string> = new Map();
+  private snoozeInterval: any = null;
 
   constructor(mainWindow: BrowserWindow, isIncognito: boolean = false) {
     this.mainWindow = mainWindow;
     this.isIncognito = isIncognito;
+    this.startSnoozeTimer();
   }
 
   /**
@@ -74,6 +80,8 @@ export class TabManager {
     this.tabs.set(tabId, view);
     this.tabWorkspaces.set(tabId, workspaceId);
     this.tabOrder.push(tabId);
+    this.tabUrls.set(tabId, url);
+    this.tabLastAccessed.set(tabId, Date.now());
 
     // Navigasyon olaylarını dinle
     this.attachWebContentsListeners(tabId, view.webContents);
@@ -182,13 +190,6 @@ export class TabManager {
       fs.appendFileSync(logPath, `\n[${new Date().toISOString()}] switchToTab called with tabId=${tabId}. Previous activeTabId=${this.activeTabId}\n`);
     } catch {}
 
-    if (!this.tabs.has(tabId)) {
-      try {
-        fs.appendFileSync(logPath, `[${new Date().toISOString()}] switchToTab ABORT: tabs map doesn't contain ${tabId}\n`);
-      } catch {}
-      return;
-    }
-
     // Önceki aktif sekmeyi gizle
     if (this.activeTabId !== null && this.activeTabId !== tabId) {
       const prevView = this.tabs.get(this.activeTabId);
@@ -197,6 +198,18 @@ export class TabManager {
       }
     }
 
+    // Sekme uyutulmuşsa uyandır
+    if (this.snoozedTabs.has(tabId)) {
+      this.snoozedTabs.delete(tabId);
+      const view = this.tabs.get(tabId);
+      const url = this.tabUrls.get(tabId);
+      if (view && url && url !== 'about:blank') {
+        console.log(`[TabManager] Waking up tab ${tabId} to ${url}`);
+        view.webContents.loadURL(url);
+      }
+    }
+
+    this.tabLastAccessed.set(tabId, Date.now());
     this.activeTabId = tabId;
     this.activeWorkspace = this.tabWorkspaces.get(tabId) || this.activeWorkspace;
     
@@ -643,6 +656,11 @@ export class TabManager {
       if (!this.isIncognito) {
         this.onNavigateCallback?.(url, wc.getTitle());
       }
+
+      // Uyutma maskesi için url'i güncelle
+      if (!this.snoozedTabs.has(tabId) && url !== 'about:blank') {
+        this.tabUrls.set(tabId, url);
+      }
     });
 
     wc.on('did-navigate-in-page', (_event, url) => {
@@ -766,8 +784,48 @@ export class TabManager {
    * Tüm sekmeleri temizler (uygulama kapanırken)
    */
   destroyAll(): void {
+    if (this.snoozeInterval) clearInterval(this.snoozeInterval);
     for (const [id] of this.tabs) {
       this.closeTab(id);
     }
+  }
+
+  setRamSnoozeTime(minutes: number): void {
+    this.ramSnoozeMinutes = minutes;
+    console.log(`[TabManager] RAM Snooze time set to ${minutes} mins`);
+  }
+
+  private startSnoozeTimer(): void {
+    this.snoozeInterval = setInterval(() => {
+      if (this.ramSnoozeMinutes <= 0) return;
+      const now = Date.now();
+
+      for (const [id, view] of this.tabs) {
+        if (id === this.activeTabId) continue;
+        if (this.snoozedTabs.has(id)) continue;
+
+        const lastAccess = this.tabLastAccessed.get(id) || now;
+        const idleMinutes = (now - lastAccess) / 60000;
+
+        if (idleMinutes >= this.ramSnoozeMinutes) {
+          this.snoozeTab(id);
+        }
+      }
+    }, 30000); // 30 saniyede bir kontrol (test edilebilirliği artırmak için)
+  }
+
+  private snoozeTab(tabId: number): void {
+    const view = this.tabs.get(tabId);
+    if (!view) return;
+
+    const url = view.webContents.getURL();
+    if (url === 'about:blank' || url === '') return;
+
+    console.log(`[TabManager] Snoozing tab ${tabId} (${url})`);
+    this.snoozedTabs.add(tabId);
+    this.tabUrls.set(tabId, url); // Son geçerli url'i kurtar
+
+    view.webContents.loadURL('about:blank');
+    this.notifyTabUpdate();
   }
 }

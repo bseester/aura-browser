@@ -38,6 +38,10 @@ interface SettingsState {
   // Güvenlik / Filtreleme
   adblockEnabled: boolean;
 
+  // Performans
+  ramSnoozeTime: number; // 0 = Kapalı, dakika cinsinden
+  networkSpeedLimit: number; // 0 = Sınırsız, Mbps cinsinden
+
   // Aksiyonlar
   toggleSidebar: () => void;
   setSidebarWidth: (width: number) => void;
@@ -46,6 +50,8 @@ interface SettingsState {
   setSearchEngine: (engine: string) => void;
   setHomepage: (url: string) => void;
   setAdblockEnabled: (enabled: boolean) => void;
+  setRamSnoozeTime: (time: number) => void;
+  setNetworkSpeedLimit: (limit: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -58,6 +64,8 @@ export const useSettingsStore = create<SettingsState>()(
       searchEngine: 'google',
       homepage: 'about:blank',
       adblockEnabled: true,
+      ramSnoozeTime: 0,
+      networkSpeedLimit: 0,
 
       toggleSidebar: () =>
         set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -79,6 +87,12 @@ export const useSettingsStore = create<SettingsState>()(
 
       setAdblockEnabled: (enabled) =>
         set({ adblockEnabled: enabled }),
+
+      setRamSnoozeTime: (time) =>
+        set({ ramSnoozeTime: time }),
+
+      setNetworkSpeedLimit: (limit) =>
+        set({ networkSpeedLimit: limit }),
     }),
     {
       name: 'morrow-settings',
@@ -90,6 +104,8 @@ export const useSettingsStore = create<SettingsState>()(
         homepage: state.homepage,
         sidebarCollapsed: state.sidebarCollapsed,
         adblockEnabled: state.adblockEnabled,
+        ramSnoozeTime: state.ramSnoozeTime,
+        networkSpeedLimit: state.networkSpeedLimit,
       }),
     }
   )
