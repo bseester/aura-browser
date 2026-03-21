@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 
 export default function HistoryPanel() {
   const [history, setHistory] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
 
   useEffect(() => {
     // IPC üzerinden geçmişi yükle
@@ -29,33 +31,86 @@ export default function HistoryPanel() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {history.length > 0 && (
-        <button
-          onClick={clearHistory}
-          style={{
-            background: 'rgba(239, 68, 68, 0.15)',
-            color: 'var(--danger)',
-            border: 'none',
-            padding: '6px 12px',
-            borderRadius: 'var(--radius-sm)',
-            cursor: 'pointer',
-            fontSize: '12px',
-            marginBottom: '12px',
-            alignSelf: 'flex-start',
-          }}
-        >
-          Geçmişi Temizle
-        </button>
-      )}
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        <input 
+          type="text" 
+          placeholder="🔍 Geçmişte ara..." 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ flex: 1, padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '12px', outline: 'none' }}
+        />
+        {history.length > 0 && (
+          <button
+            onClick={clearHistory}
+            style={{
+              background: 'rgba(239, 68, 68, 0.12)',
+              color: 'var(--danger)',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              fontSize: '11px',
+              fontFamily: 'Inter, sans-serif'
+            }}
+          >
+            Temizle
+          </button>
+        )}
+      </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto' }}>
-        {history.length === 0 ? (
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {['all', 'today', 'yesterday', 'week'].map((filter) => (
+          <button 
+            key={filter} 
+            onClick={() => setQuickFilter(filter as any)}
+            style={{
+              padding: '5px 10px',
+              fontSize: '11px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-subtle)',
+              background: quickFilter === filter ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+              color: quickFilter === filter ? '#fff' : 'var(--text-primary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {filter === 'all' && 'Tümü'}
+            {filter === 'today' && 'Bugün'}
+            {filter === 'yesterday' && 'Dün'}
+            {filter === 'week' && 'Bu Hafta'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', flex: 1 }}>
+        {history.filter(item => {
+          const matchQuery = (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase())) || (item.url && item.url.toLowerCase().includes(searchQuery.toLowerCase()));
+          
+          const itemDate = new Date(item.last_visited_at);
+          const today = new Date();
+          const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+          
+          let matchDate = true;
+          if (quickFilter === 'today') matchDate = itemDate.toDateString() === today.toDateString();
+          else if (quickFilter === 'yesterday') matchDate = itemDate.toDateString() === yesterday.toDateString();
+          else if (quickFilter === 'week') {
+            const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7);
+            matchDate = itemDate >= weekAgo;
+          }
+
+          return matchQuery && matchDate;
+        }).length === 0 ? (
           <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
-            Geçmiş kaydı yok.
+            {history.length === 0 ? 'Geçmiş kaydı yok.' : 'Eşleşen kayıt bulunamadı.'}
           </div>
         ) : (
-          history.map((item) => (
+          history.filter(item => {
+            const matchQuery = (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase())) || (item.url && item.url.toLowerCase().includes(searchQuery.toLowerCase()));
+            const matchDate = !selectedDate || item.last_visited_at?.startsWith(selectedDate);
+            return matchQuery && matchDate;
+          }).map((item) => (
             <motion.div
               key={item.id}
               onClick={() => handleOpen(item.url)}

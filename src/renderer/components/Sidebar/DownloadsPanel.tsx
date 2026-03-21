@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 
 export default function DownloadsPanel() {
   const [downloads, setDownloads] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
 
   useEffect(() => {
     const api = window.electronAPI;
@@ -54,12 +56,73 @@ export default function DownloadsPanel() {
         Test İndirmesi Başlat (README.md)
       </button>
 
-      {downloads.length === 0 ? (
+      <input 
+        type="text" 
+        placeholder="🔍 İndirmelerde ara..." 
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: '12px', marginBottom: '8px', width: '100%', outline: 'none' }}
+      />
+
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {['all', 'today', 'yesterday', 'week'].map((filter) => (
+          <button 
+            key={filter} 
+            onClick={() => setQuickFilter(filter as any)}
+            style={{
+              padding: '5px 10px',
+              fontSize: '11px',
+              borderRadius: '20px',
+              border: '1px solid var(--border-subtle)',
+              background: quickFilter === filter ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+              color: quickFilter === filter ? '#fff' : 'var(--text-primary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {filter === 'all' && 'Tümü'}
+            {filter === 'today' && 'Bugün'}
+            {filter === 'yesterday' && 'Dün'}
+            {filter === 'week' && 'Bu Hafta'}
+          </button>
+        ))}
+      </div>
+
+      {downloads.filter(item => {
+        const matchQuery = item.filename?.toLowerCase().includes(searchQuery.toLowerCase());
+        const itemDate = new Date(item.startedAt);
+        const today = new Date();
+        const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+        
+        let matchDate = true;
+        if (quickFilter === 'today') matchDate = itemDate.toDateString() === today.toDateString();
+        else if (quickFilter === 'yesterday') matchDate = itemDate.toDateString() === yesterday.toDateString();
+        else if (quickFilter === 'week') {
+          const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7);
+          matchDate = itemDate >= weekAgo;
+        }
+        return matchQuery && matchDate;
+      }).length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '12px', padding: '20px', textAlign: 'center' }}>
-          Henüz bir indirme yok. Dosyalarınızı indirdiğinizde burada görünecek.
+          {downloads.length === 0 ? 'Henüz bir indirme yok.' : 'Eşleşen dosya bulunamadı.'}
         </p>
       ) : (
-        downloads.map((item) => {
+        downloads.filter(item => {
+          const matchQuery = item.filename?.toLowerCase().includes(searchQuery.toLowerCase());
+          const itemDate = new Date(item.startedAt);
+          const today = new Date();
+          const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+          
+          let matchDate = true;
+          if (quickFilter === 'today') matchDate = itemDate.toDateString() === today.toDateString();
+          else if (quickFilter === 'yesterday') matchDate = itemDate.toDateString() === yesterday.toDateString();
+          else if (quickFilter === 'week') {
+            const weekAgo = new Date(); weekAgo.setDate(today.getDate() - 7);
+            matchDate = itemDate >= weekAgo;
+          }
+          return matchQuery && matchDate;
+        }).map((item) => {
           const progress = item.totalBytes > 0 ? (item.receivedBytes / item.totalBytes) * 100 : 0;
           const isFinished = item.state === 'completed' || item.state === 'cancelled';
 

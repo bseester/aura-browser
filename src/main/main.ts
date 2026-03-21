@@ -62,11 +62,20 @@ app.commandLine.appendSwitch('disable-remote-module');
     adBlocker = new AdBlocker(session.defaultSession);
     
     windowManager = new WindowManager();
+    
+
 
     // IPC handler'larını pencere açılmadan önce kaydet (Race condition'ı önler)
     registerIPCHandlers(windowManager, adBlocker);
 
     const mainWindow = windowManager.createMainWindow();
+
+    // ─── Geçmiş Kaydı (History Tracking) ───
+    const { NavigationTracker } = require('./engine/navigation');
+    const tracker = new NavigationTracker();
+    windowManager.getTabManager()?.setOnNavigate((url: string, title: string) => {
+      tracker.getHistoryManager().addVisit(url, title);
+    });
 
     // Otomatik güncellemeleri başlat
     import('./updater').then(({ setupAutoUpdater }) => setupAutoUpdater());

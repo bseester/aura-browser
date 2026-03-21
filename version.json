@@ -1,5 +1,5 @@
 {
   "latest_id": 2,
   "version": "1.3.2",
-  "notes": "Morrow Browser - Sürüm 1.3.2"
+  "notes": "Morrow Browser v1.3.2 yenilikleri:\n- 📥 İndirmeler paneline 'Tek Tıkla Dosya Açma' eklendi.\n- 🔍 Geçmiş ve İndirmeler için dinamik Metin Araması geldi.\n- 📅 Tarihleri süzmek için modern 'Bugün, Dün, Bu Hafta' butonları eklendi.\n- 🛡️ AdBlock aktif/pasif durumunun anında etki etmesi sağlandı.\n- 🔄 Ayarlar > Hakkında menüsüne 'Güncellemeleri Denetle' fonksiyonu eklendi."
 }
