@@ -5,8 +5,8 @@
  * Routes: "/" (tarayıcı) ve "/settings" (ayarlar sayfası)
  */
 
-import { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import TopBar from './components/TopBar/TopBar';
 import Sidebar from './components/Sidebar/Sidebar';
 import WebViewArea from './components/WebViewArea/WebViewArea';
@@ -19,6 +19,11 @@ import { useTheme } from './hooks/useTheme';
 
 function App() {
   const [findVisible, setFindVisible] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    window.electronAPI?.system?.setRouteState(location.pathname);
+  }, [location.pathname]);
 
   // Temayı DOM'a senkronize et
   useTheme();

@@ -22,6 +22,10 @@ declare global {
       };
       system: OriginalElectronAPI['system'] & {
         killProcess: (pid: number) => Promise<boolean>;
+        setRouteState: (route: string) => Promise<void>;
+      };
+      history: OriginalElectronAPI['history'] & {
+        search: (query: string, limit?: number) => Promise<any[]>;
       };
     };
   }

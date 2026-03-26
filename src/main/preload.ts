@@ -102,6 +102,7 @@ const electronAPI = {
   history: {
     get: (limit?: number) => ipcRenderer.invoke(IPC_CHANNELS.HISTORY_GET, limit),
     clear: () => ipcRenderer.invoke(IPC_CHANNELS.HISTORY_CLEAR),
+    search: (query: string, limit?: number) => ipcRenderer.invoke('history:search', query, limit),
   },
 
   // ─── Yer İmleri ───
@@ -128,6 +129,7 @@ const electronAPI = {
     closeChromeMenu: () => ipcRenderer.invoke('app:close-chrome-menu'),
     getSuggestions: (query: string) => ipcRenderer.invoke('app:get-suggestions', query),
     navigateMainRouter: (path: string) => ipcRenderer.invoke('system:navigate-router', path),
+    setRouteState: (route: string) => ipcRenderer.invoke('system:set-route-state', route),
     onNavigateMainRouter: (callback: (path: string) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: string) => callback(data);
       ipcRenderer.on('system:on-navigate-router', listener);

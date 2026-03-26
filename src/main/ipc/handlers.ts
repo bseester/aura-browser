@@ -232,6 +232,11 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
   const historyManager = new HistoryManager();
   const bookmarkManager = new BookmarkManager();
   const findInPage = new FindInPage();
+
+  // Ana pencerenin TabManager'ına geçmiş kaydetme olayını bağla
+  windowManager.getTabManager()?.setOnNavigate((url, title) => {
+    historyManager.addVisit(url, title);
+  });
   
   // ─── Sekme Yönetimi ───
 
@@ -416,6 +421,10 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
 
   // ─── Geçmiş ───
 
+  ipcMain.handle('history:search', (_event, query: string, limit?: number) => {
+    return historyManager.search(query, limit);
+  });
+
   ipcMain.handle(IPC_CHANNELS.HISTORY_GET, (_event, limit?: number) => {
     const fs = require('fs');
     const logPath = 'C:\\Users\\bseester\\tarayıcı\\nav_log.txt';
@@ -479,6 +488,10 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     if (mainWin && !mainWin.isDestroyed()) {
       mainWin.webContents.send('system:on-navigate-router', path);
     }
+  });
+
+  ipcMain.handle('system:set-route-state', (_event, route: string) => {
+    getTabManager()?.setRendererRoute(route);
   });
 
   // ─── Çalışma Alanları (Workspaces) ───

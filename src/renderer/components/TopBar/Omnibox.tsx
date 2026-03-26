@@ -12,7 +12,8 @@ import { Star } from 'lucide-react';
 export default function Omnibox() {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  interface Suggestion { primary: string; secondary?: string; url?: string; icon?: string; }
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [bookmarkId, setBookmarkId] = useState<number | null>(null);
@@ -35,8 +36,48 @@ export default function Omnibox() {
       return;
     }
     const timer = setTimeout(async () => {
-      const sugs = await window.electronAPI?.system?.getSuggestions(inputValue);
-      if (sugs) setSuggestions(sugs);
+      const [googleSugs, histSugs] = await Promise.all([
+        window.electronAPI?.system?.getSuggestions(inputValue).catch(() => []),
+        window.electronAPI?.history?.search(inputValue, 5).catch(() => [])
+      ]);
+
+      const newSugs: Suggestion[] = [];
+      
+      if (histSugs && histSugs.length > 0) {
+        histSugs.forEach((h: any) => {
+          newSugs.push({
+            primary: h.title || h.url,
+            secondary: h.url,
+            url: h.url,
+            icon: '🕒'
+          });
+        });
+      }
+
+      if (googleSugs) {
+        googleSugs.forEach((s: string) => {
+          let primary = s;
+          let secondary = '';
+          if (s.includes(' - ')) {
+            const parts = s.split(' - ');
+            primary = parts[0];
+            secondary = parts[1];
+          }
+          let icon = '🔍';
+          const secLower = secondary.toLowerCase();
+          if (secLower.includes('şarkı') || secLower.includes('müzik') || secLower.includes('albüm') || secLower.includes('song')) {
+            icon = '🎵';
+          } else if (secLower.includes('arama') || secLower.includes('search')) {
+            icon = '🔍';
+          } else if (s.startsWith('http') || s.includes('.com')) {
+            icon = '🌐';
+          }
+          if (!newSugs.find(n => n.primary === primary)) {
+            newSugs.push({ primary, secondary, icon });
+          }
+        });
+      }
+      setSuggestions(newSugs);
     }, 200);
     return () => clearTimeout(timer);
   }, [inputValue, isFocused]);
@@ -294,32 +335,13 @@ export default function Omnibox() {
         >
           <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
             {suggestions.map((suggestion, i) => {
-              // Öneriyi parçala: "Asdasd - Şarkı" -> title: "Asdasd", label: "Şarkı"
-              let primary = suggestion;
-              let secondary = '';
-              if (suggestion.includes(' - ')) {
-                const parts = suggestion.split(' - ');
-                primary = parts[0];
-                secondary = parts[1];
-              }
-
-              // İkon Belirleme
-              let IconComponent = "🔍"; // fallback generic Icon representation
-              const secLower = secondary.toLowerCase();
-              if (secLower.includes('şarkı') || secLower.includes('müzik') || secLower.includes('albüm') || secLower.includes('song')) {
-                IconComponent = "🎵";
-              } else if (secLower.includes('arama') || secLower.includes('search')) {
-                IconComponent = "🔍";
-              } else if (suggestion.startsWith('http') || suggestion.includes('.com')) {
-                IconComponent = "🌐";
-              }
-
               return (
                 <motion.div
                   key={i}
                   onClick={() => {
-                    setInputValue(suggestion);
-                    handleGo(suggestion);
+                    const target = suggestion.url || suggestion.primary;
+                    setInputValue(target);
+                    handleGo(target);
                   }}
                   whileHover={{ background: 'rgba(255,255,255,0.04)' }}
                   style={{
@@ -333,15 +355,15 @@ export default function Omnibox() {
                     transition: 'background 0.1s',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '15px', display: 'flex' }}>
-                      {IconComponent}
+                      {suggestion.icon || "🔍"}
                     </span>
-                    <span style={{ fontSize: '13.5px', fontWeight: 500 }}>{primary}</span>
+                    <span style={{ fontSize: '13.5px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{suggestion.primary}</span>
                   </div>
-                  {secondary && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {secondary}
+                  {suggestion.secondary && (
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '300px' }}>
+                      {suggestion.secondary}
                     </span>
                   )}
                 </motion.div>

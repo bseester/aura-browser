@@ -283,6 +283,13 @@ export class TabManager {
     this.notifyTabUpdate();
   }
 
+  private rendererRoute: string = '/';
+
+  setRendererRoute(route: string): void {
+    this.rendererRoute = route;
+    this.resizeActiveTab();
+  }
+
   /**
    * Aktif sekmeyi pencere boyutuna göre yeniden boyutlandırır.
    * Top bar yüksekliği (80px) ve sidebar genişliği (52px) düşülür.
@@ -292,6 +299,11 @@ export class TabManager {
 
     const view = this.tabs.get(this.activeTabId);
     if (!view || view.webContents.isDestroyed()) return;
+
+    if (this.rendererRoute === '/settings') {
+      view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+      return;
+    }
 
     const bounds = this.mainWindow.getContentBounds();
     const url = view.webContents.getURL();

@@ -38,6 +38,8 @@ export class AdBlocker {
 
   constructor(targetSession: Electron.Session = session.defaultSession) {
     this.setup(targetSession);
+    this.setup(session.fromPartition('persist:bseester'));
+    this.setup(session.fromPartition('in-memory:incognito'));
   }
 
   private setup(targetSession: Electron.Session): void {
