@@ -111,15 +111,15 @@
                     <div class="os-icon">🪟</div>
                     <h3>Windows</h3>
                     <p>Windows 10 / 11 (64-bit)</p>
-                    <a href="https://github.com/bseester/morrow-browser/releases" target="_blank" class="btn btn-primary" style="justify-content: center;">Windows İçin İndir</a>
-                    <div class="version-tag" style="margin-top: 16px;">v1.4.0 .exe (Setup)</div>
+                    <a href="https://github.com/bseester/morrow-browser/releases" id="win-download" target="_blank" class="btn btn-primary" style="justify-content: center;">Windows İçin İndir</a>
+                    <div class="version-tag" id="win-version" style="margin-top: 16px;">v1.4.0 .exe (Setup)</div>
                 </div>
                 <div class="dl-card">
                     <div class="os-icon">🍎</div>
                     <h3>macOS</h3>
                     <p>Intel & Apple Silicon (M1/M2/M3)</p>
-                    <a href="https://github.com/bseester/morrow-browser/releases" target="_blank" class="btn btn-secondary" style="justify-content: center;">macOS İçin İndir</a>
-                    <div class="version-tag" style="margin-top: 16px;">v1.4.0 .dmg (Universal)</div>
+                    <a href="https://github.com/bseester/morrow-browser/releases" id="mac-download" target="_blank" class="btn btn-secondary" style="justify-content: center;">macOS İçin İndir</a>
+                    <div class="version-tag" id="mac-version" style="margin-top: 16px;">v1.4.0 .dmg (Universal)</div>
                 </div>
             </div>
         </section>
@@ -148,6 +148,38 @@
                 });
             });
         });
+
+        // GitHub Latest Release Automation
+        async function updateDownloadLinks() {
+            try {
+                const response = await fetch('https://api.github.com/repos/bseester/morrow-browser/releases/latest');
+                const data = await response.json();
+                const version = data.tag_name;
+                
+                const winAsset = data.assets.find(a => a.name.endsWith('.exe'));
+                const macAsset = data.assets.find(a => a.name.endsWith('.dmg'));
+
+                if (winAsset) {
+                    document.getElementById('win-download').href = winAsset.browser_download_url;
+                    document.getElementById('win-version').textContent = `${version} .exe (Setup)`;
+                }
+                
+                if (macAsset) {
+                    document.getElementById('mac-download').href = macAsset.browser_download_url;
+                    document.getElementById('mac-version').textContent = `${version} .dmg (Universal)`;
+                }
+
+                // Update hero badge if exists
+                const badge = document.querySelector('.hero-badge');
+                if (badge) {
+                    badge.textContent = `YENİ: ${version} ŞİMDİ YAYINDA`;
+                }
+            } catch (error) {
+                console.error('Failed to fetch latest release:', error);
+            }
+        }
+
+        updateDownloadLinks();
     </script>
 </body>
 </html>
