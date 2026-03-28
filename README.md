@@ -1,14 +1,14 @@
-# Aura Browser 🚀
+# Morrow Browser 🚀 (v1.4.0-beta)
 
-**Aura Browser**, Electron, React ve TypeScript ile geliştirilmiş, hız ve kişiselleştirilebilirlik odaklı modern bir masaüstü internet tarayıcısıdır.
+**Morrow Browser**, Electron, React ve TypeScript ile geliştirilmiş; hız, modern estetik (Glassmorphism) ve üst düzey performans optimizasyonu odaklı bir masaüstü internet tarayıcısıdır.
 
-## ✨ Özellikler
+## ✨ Öne Çıkan Özellikler
 
-- 🗂️ **Çalışma Alanları (Workspaces):** Sekmeleri farklı çalışma alanlarına bölerek iş ve kişisel hayatını ayır.
-- 🔖 **Kişisel Yer İmleri:** Her çalışma alanının kendine ait ve bağımsız Yer İmleri (Bookmarks) ve Hızlı Erişim Kısayolları.
-- 🎨 **Modern ve Şık Arayüz:** Karanlık mod (Dark Mode) ve akıcı cam tasarımlar.
-- 🌐 **Dinamik Sekme Logoları (Favicons):** Sitelerin kendi gerçek logolarını doğrudan sekmelerde akıcı gösterir.
-- ⬇️ **İndirme ve Geçmiş Yönetimi:** Sorunsuz dosya indirme desteği ve kalıcı (persistent) veri tabanı.
+- 🏎️ **Morrow Engine Pro:** Turbo Şarj modu, Derin Bellek Temizliği ve Site Bazlı Optimizasyon ile en hızlı Chromium deneyimi.
+- 🗂️ **Gelişmiş Çalışma Alanları (Workspaces):** Sekmeleri iş ve kişisel hayatına göre ayır, her alan için bağımsız yer imlerine sahip ol.
+- 🎨 **Premium Glassmorphism:** Derin blur efektleri, Lucide ikon setleri ve özelleştirilebilir "GX" tarzı temalar.
+- 🛡️ **Gömülü AdBlock & Güvenlik:** Reklamları ağ katmanında engelleyen ve tracker'ları temizleyen dahili koruma sistemi.
+- ⚡ **Kaynak Yönetimi:** Kullanıcı tanımlı RAM ve Ağ (Network) sınırlayıcıları ile sistem kaynaklarını sen kontrol et.
 
 ## 🛠️ Kurulum ve Geliştirme
 
@@ -26,31 +26,31 @@ Projeyi yerelde çalıştırmak için:
 
 ## 📦 Paketleme (Production / Setup)
 
-Uygulamayı bir `.exe` (Windows) paketlemek için:
+Uygulamayı bir `.exe` (Windows) olarak paketlemek için:
 
-### Windows İçin:
 ```bash
 npm run package:win
 ```
-*Not: Sembolik link (symlink) hatalarını önlemek için terminalinizi **Yönetici olarak** veya Windows **Geliştirici Modu** açıkken çalıştırmanız önerilir.*
 
 ---
 
-## 🔧 Son Gelişmeler ve İyileştirmeler
+## 🔧 Sürüm Notları: v1.4.0-beta
 
-Bu başlık altında son yapılan görsel, işlevsel ve kararlılık güncellemeleri listelenmektedir:
+Bu sürümle birlikte tarayıcı mimarisi **Aura**'dan **Morrow**'a evrilmiştir:
 
-### 🔍 1. Adres Çubuğu (Omnibox) & Öneriler
-- **Dinamik İkonlar:** Arama önerileri tipine göre (**🎵 Müzik**, **🌐 Web**, **🔍 Arama**) otomatik rozet kazanır.
-- **Split Metin Alanı:** Okunabilirliği artırmak adına öneriler iki satıra bölünür.
-- **AI Entegrasyonu:** Adres çubuğu içine estetik ve hover animasyonlu bir **✨ AI** butonu eklendi.
+### 🚀 1. Morrow Engine Pro Lansmanı
+- **Turbo Şarj Modu:** Aktif sekmeye CPU/GPU önceliği vererek takılmaların önüne geçer.
+- **Side Optimizer:** YouTube (Video), Figma (Productivity) gibi siteler için özel donanım profilleri uygular.
+- **Derin Temizlik:** Tek tıkla Shader, DNS ve V8 motoru önbelleğini temizler.
 
-### 🛡️ 2. Sekme & Navigasyon Güvenliği
-- **Otomatik Düzeltme Fall-back:** Boş sekmelerde veya kilitlenmelerde `activeTabId` null dahi olsa arama kilitlenmesi yaşanmaz, otomatik sekme yaratılır.
+### 🎨 2. Arayüz ve Tasarım Dilinin Yenilenmesi
+- **Modern Ayarlar Sayfası:** Tüm ayarlar sayfası Lucide ikonları ve premium cam tasarımıyla baştan yazıldı.
+- **Gelişmiş ⋮ Menüsü:** Morrow Engine kontrolleri (Turbo & Clean) doğrudan ana menüye entegre edildi.
+- **Lucide İkon Seti:** Eski emojiler yerine tüm navigasyon sistemine modern vektör ikonlar yerleştirildi.
 
-### 🎛️ 3. 3-Nokta Menü (Chrome Menu Overlay)
-- **Güvenceli Çalışma Modu:** Overlay pencerelerinde (`sandbox: false`) standartları uygulanarak sayfa içi çakışmalar giderildi.
-- **Dinamik Port Çözümleme:** Geliştirme ortamında (`npm run dev`) overlay dosyalarının yüklenememe hatası giderildi.
+### 🛡️ 3. Performans ve Stabilite
+- **Hard RAM Limit:** Sistem belleği kritik seviyeye ulaştığında arka plan sekmelerini agresif bir şekilde uyutur.
+- **Idle State Management:** Bilgisayar boştayken otomatik kaynak temizliği yapar.
 
 ---
-İyi kullanımlar! 🌈
+Morrow Browser ile geleceğin web deneyimine hoş geldin! 🌈
