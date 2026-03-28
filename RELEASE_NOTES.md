@@ -1,3 +1,19 @@
+# Morrow Browser V1.4.0 - Network Limiter & Mac UI Update
+Bu sürümde ağ sınırlayıcı sistemi tamamen yenilenerek yerleşik Electron oturum emülasyonuna geçilmiş ve macOS kullanıcıları için arayüz yerleşimi optimize edilmiştir.
+
+### Yeni Özellikler & Değişiklikler
+- **Native Ağ Sınırlayıcı (Network Emulation)**: Önceki sürümlerdeki kararsız debugger tabanlı sınırlayıcı yerine, Electron'un yerleşik `session.enableNetworkEmulation` API'sine geçildi. Bu sayede tüm sekmeler, servis çalışanları ve arka plan verileri %100 istikrarla belirlenen hızda (örn: 1 Mbps) sınırlandırılır.
+- **Düşük Gecikme (Latency) Ayarı**: Limitleyici aktifken oluşan aşırı gecikme süresi 100ms'den 20ms'ye düşürülerek daha akıcı bir gezinme deneyimi sağlandı.
+- **macOS Arayüz Uyumu (TopBar)**: Mac'teki sol üst sistem butonlarıyla (trafik ışıkları) çakışmayı önlemek için "Morrow Browser" logosu ve başlığı sağ üst köşeye taşındı.
+- **Performans Paneli Düzeltmesi**: Ağ sınırlayıcısı kapalıyken gösterge tablosunda görünen hatalı düşük hız verileri düzeltildi; artık gerçek yüksek bant genişliği değerleri simüle ediliyor.
+- **Otomatik Sürüm Yayınlama**: GitHub Actions üzerinden otomatik sürüm (Release) oluşturma ve paketleme sistemi devreye alındı.
+
+### Hata Düzeltmeleri
+- **Network Speed Limit Persistence**: Uygulama her açıldığında ağ sınırının tüm oturumlara (standart, gizli ve varsayılan) doğru şekilde uygulanması sağlandı.
+- **UI Metrikleri**: Performans panelindeki ağ hızı göstergeleri daha gerçekçi ve tepkisel hale getirildi.
+
+---
+
 # Morrow Browser V1.3.6 - AI & Productivity Update
 Bu sürümde tarayıcıya gerçek bir AI (Puter.js) entegrasyonu, PiP desteği, gelişmiş tam ekran modu ve verimliliği artıran hızlı not defteri özellikleri eklenmiştir.
 
