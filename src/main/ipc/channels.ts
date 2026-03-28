@@ -15,6 +15,8 @@ export const IPC_CHANNELS = {
   TAB_GROUP_ADD: 'tab:group-add',
   TAB_GROUP_REMOVE: 'tab:group-remove',
   TAB_GROUP_COLLAPSE: 'tab:group-collapse',
+  TAB_TOGGLE_PIP: 'tab:toggle-pip',
+  TAB_EXECUTE_JS: 'tab:execute-js',
 
   // ─── Navigasyon ───
   NAV_GO: 'nav:go',
@@ -25,6 +27,7 @@ export const IPC_CHANNELS = {
   NAV_URL_UPDATED: 'nav:url-updated', // main → renderer bildirim
   NAV_LOADING: 'nav:loading',         // main → renderer bildirim
   NAV_TITLE_UPDATED: 'nav:title-updated',
+  NAV_FULLSCREEN_UPDATE: 'nav:fullscreen-update',
   NAV_PRINT: 'nav:print',
   NAV_PRINT_PDF: 'nav:print-pdf',
 

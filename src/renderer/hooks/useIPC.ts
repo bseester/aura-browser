@@ -10,7 +10,7 @@ import { useTabStore } from '../store/useTabStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 
 export function useIPC() {
-  const { setTabs, updateTabUrl, updateTabTitle, updateTabLoading } = useTabStore();
+  const { setTabs, updateTabUrl, updateTabTitle, updateTabLoading, updateTabFullscreen } = useTabStore();
 
   useEffect(() => {
     const api = window.electronAPI;
@@ -34,6 +34,11 @@ export function useIPC() {
     // Başlık değişikliklerini dinle
     const unsubTitle = api.nav.onTitleUpdated((data) => {
       updateTabTitle(data.tabId, data.title);
+    });
+
+    // Tam ekran değişikliklerini dinle
+    const unsubFullscreen = api.nav.onFullscreenUpdate((data) => {
+      updateTabFullscreen(data.tabId, data.isFullscreen);
     });
 
     // İlk sekme listesini al
@@ -62,6 +67,7 @@ export function useIPC() {
       unsubUrlUpdate();
       unsubLoading();
       unsubTitle();
+      unsubFullscreen();
     };
-  }, [setTabs, updateTabUrl, updateTabTitle, updateTabLoading]);
+  }, [setTabs, updateTabUrl, updateTabTitle, updateTabLoading, updateTabFullscreen]);
 }

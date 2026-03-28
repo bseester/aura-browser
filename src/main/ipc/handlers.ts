@@ -251,6 +251,34 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     return tabId;
   });
 
+  ipcMain.handle(IPC_CHANNELS.TAB_TOGGLE_PIP, async () => {
+    const wc = getTabManager()?.getActiveWebContents();
+    if (!wc) return false;
+    
+    // Find first playing video or any video and trigger PiP
+    try {
+      await wc.executeJavaScript(`
+        (async () => {
+          const videos = Array.from(document.querySelectorAll('video'));
+          const playingVideo = videos.find(v => !v.paused && v.readyState >= 2) || videos[0];
+          if (playingVideo) {
+            if (document.pictureInPictureElement) {
+              await document.exitPictureInPicture();
+            } else {
+              await playingVideo.requestPictureInPicture();
+            }
+            return true;
+          }
+          return false;
+        })()
+      `);
+      return true;
+    } catch (e) {
+      console.error('PiP error:', e);
+      return false;
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.TAB_CLOSE, (_event, tabId: number) => {
     const tabManager = getTabManager();
     if (!tabManager) return;
@@ -804,5 +832,15 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
       console.error('clearDownloads error:', e);
       return false;
     }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.TAB_EXECUTE_JS, async (_event, script: string, tabId?: number) => {
+    const tm = getTabManager();
+    const id = tabId || tm.getActiveTabId();
+    const view = tm.getTab(id);
+    if (view) {
+      return await view.webContents.executeJavaScript(script);
+    }
+    return null;
   });
 }

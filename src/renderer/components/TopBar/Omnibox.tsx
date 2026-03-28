@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTabStore } from '../../store/useTabStore';
 import { useSettingsStore, SEARCH_ENGINES } from '../../store/useSettingsStore';
-import { Star } from 'lucide-react';
+import { Star, MonitorPlay } from 'lucide-react';
 
 export default function Omnibox() {
   const [inputValue, setInputValue] = useState('');
@@ -293,9 +293,33 @@ export default function Omnibox() {
             </motion.button>
           )}
 
+          {/* Picture-in-Picture (PiP) Butonu */}
+          <motion.button
+            type="button"
+            onClick={() => window.electronAPI?.tabs.togglePip()}
+            whileHover={{ scale: 1.15 }}
+            whileTap={{ scale: 0.9 }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: '16px',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'color var(--transition-fast)',
+            }}
+            title="Resim İçinde Resim (PiP) Modu"
+          >
+            <MonitorPlay size={16} color="var(--text-muted)" />
+          </motion.button>
+
           {/* AI Modu Button - Bar içine yerleştirildi */}
           <motion.button
             type="button"
+            onClick={() => window.electronAPI?.sidebar.togglePanel('ai')}
             whileHover={{ scale: 1.05, background: 'rgba(255,255,255,0.08)' }}
             whileTap={{ scale: 0.95 }}
             style={{

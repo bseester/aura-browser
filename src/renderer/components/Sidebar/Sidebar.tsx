@@ -15,10 +15,12 @@ import WorkspacesPanel from './WorkspacesPanel';
 import PerformancePanel from './PerformancePanel';
 import CleanerPanel from './CleanerPanel'; // Added CleanerPanel
 import SettingsPanel from './SettingsPanel'; // Added SettingsPanel (assuming it's intended for future use or a typo for DownloadsPanel replacement)
+import NotesPanel from './NotesPanel';
+import AIPanel from './AIPanel';
 import { useTabStore } from '../../store/useTabStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 
-type PanelType = 'none' | 'bookmarks' | 'history' | 'downloads' | 'workspaces' | 'performance' | 'cleaner'; // Added 'cleaner'
+type PanelType = 'none' | 'bookmarks' | 'history' | 'downloads' | 'workspaces' | 'performance' | 'cleaner' | 'notes' | 'ai'; // Added 'cleaner'
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -100,6 +102,12 @@ export default function Sidebar() {
         isActive={activePanel === 'workspaces'}
         onClick={() => togglePanel('workspaces')}
       />
+      <SidebarItem
+        icon="📝"
+        label="Not Defteri"
+        isActive={activePanel === 'notes'}
+        onClick={() => togglePanel('notes')}
+      />
       {sidebarPerformanceEnabled && (
         <SidebarItem
           icon="⚡"
@@ -171,6 +179,8 @@ export default function Sidebar() {
               {activePanel === 'history' && '🕐 Geçmiş'}
               {activePanel === 'downloads' && '📥 İndirmeler'}
               {activePanel === 'workspaces' && '📂 Çalışma Alanları'}
+              {activePanel === 'notes' && '📝 Not Defteri'}
+              {activePanel === 'ai' && '✨ Morrow AI'}
               {activePanel === 'cleaner' && '🧹 Araçlar'}
             </h3>
             <motion.button
@@ -195,6 +205,8 @@ export default function Sidebar() {
             {activePanel === 'bookmarks' && <BookmarksPanel />}
             {activePanel === 'downloads' && <DownloadsPanel />}
             {activePanel === 'workspaces' && <WorkspacesPanel />}
+            {activePanel === 'notes' && <NotesPanel />}
+            {activePanel === 'ai' && <AIPanel />}
             {activePanel === 'performance' && <PerformancePanel />}
             {activePanel === 'cleaner' && <CleanerPanel />}
           </div>

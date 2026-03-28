@@ -672,3 +672,5 @@
 [2026-03-26T17:39:19.957Z] Limit Request: 0 Mbps, View URL: about:blank
 
 [2026-03-26T17:39:19.960Z] Limit Request: 0 Mbps, View URL: about:blank
+
+[2026-03-28T11:28:59.513Z] Limit Request: 0 Mbps, View URL: https://www.youtube.com/watch?v=8mISkByminw

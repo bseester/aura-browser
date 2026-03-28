@@ -29,6 +29,9 @@ const electronAPI = {
       ipcRenderer.invoke('tab:show-context-menu', tabId, isPinned),
     closeAll: () => ipcRenderer.invoke('tabs:close-all'),
     panic: () => ipcRenderer.invoke('tabs:panic'),
+    togglePip: () => ipcRenderer.invoke(IPC_CHANNELS.TAB_TOGGLE_PIP),
+    executeJavaScript: (script: string, tabId?: number) =>
+      ipcRenderer.invoke(IPC_CHANNELS.TAB_EXECUTE_JS, script, tabId),
     onUpdate: (callback: (data: unknown) => void) => {
       const listener = (_event: Electron.IpcRendererEvent, data: unknown) => callback(data);
       ipcRenderer.on(IPC_CHANNELS.TAB_UPDATE, listener);
@@ -75,6 +78,12 @@ const electronAPI = {
         callback(data);
       ipcRenderer.on(IPC_CHANNELS.NAV_TITLE_UPDATED, listener);
       return () => ipcRenderer.removeListener(IPC_CHANNELS.NAV_TITLE_UPDATED, listener);
+    },
+    onFullscreenUpdate: (callback: (data: { tabId: number; isFullscreen: boolean }) => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, data: { tabId: number; isFullscreen: boolean }) =>
+        callback(data);
+      ipcRenderer.on(IPC_CHANNELS.NAV_FULLSCREEN_UPDATE, listener);
+      return () => ipcRenderer.removeListener(IPC_CHANNELS.NAV_FULLSCREEN_UPDATE, listener);
     },
     print: () => ipcRenderer.invoke(IPC_CHANNELS.NAV_PRINT),
     printToPDF: () => ipcRenderer.invoke(IPC_CHANNELS.NAV_PRINT_PDF),

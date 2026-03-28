@@ -13,6 +13,7 @@ import WebViewArea from './components/WebViewArea/WebViewArea';
 import FindBar from './components/FindBar/FindBar';
 import SettingsPage from './components/Settings/SettingsPage';
 import ChromeMenuOverlay from './components/TopBar/ChromeMenuOverlay';
+import { useTabStore } from './store/useTabStore';
 import { useIPC } from './hooks/useIPC';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTheme } from './hooks/useTheme';
@@ -20,6 +21,9 @@ import { useTheme } from './hooks/useTheme';
 function App() {
   const [findVisible, setFindVisible] = useState(false);
   const location = useLocation();
+  const { tabs, activeTabId } = useTabStore();
+  const activeTab = tabs.find(t => t.id === activeTabId);
+  const isFullscreen = activeTab?.isFullscreen ?? false;
 
   useEffect(() => {
     window.electronAPI?.system?.setRouteState(location.pathname);
@@ -56,11 +60,11 @@ function App() {
             <FindBar isVisible={findVisible} onClose={() => setFindVisible(false)} />
 
             {/* Üst çubuk: sekmeler + omnibox + navigasyon */}
-            <TopBar />
+            {!isFullscreen && <TopBar />}
 
             {/* Gövde: sidebar + web içerik */}
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-              <Sidebar />
+              {!isFullscreen && <Sidebar />}
               <WebViewArea />
             </div>
           </div>

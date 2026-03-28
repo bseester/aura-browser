@@ -49,6 +49,7 @@ export class TabManager {
   private onNavigateCallback?: (url: string, title: string) => void;
   public contextMenuCallbacks = new Map<string, () => void>(); // Custom HTML ContextMenu callback map
   private pinnedTabIds: Set<number> = new Set();
+  private fullscreenTabs: Set<number> = new Set();
   
   // Tab Groups logic
   private tabGroups: Map<string, TabGroupInfo> = new Map();
@@ -316,12 +317,22 @@ export class TabManager {
     const TOPBAR_HEIGHT = 80; // TopBar (40px) + WindowControls (40px)
     const SIDEBAR_WIDTH = 52 + this.sidebarPanelWidth;
 
-    view.setBounds({
-      x: SIDEBAR_WIDTH,
-      y: TOPBAR_HEIGHT,
-      width: bounds.width - SIDEBAR_WIDTH,
-      height: bounds.height - TOPBAR_HEIGHT,
-    });
+    const isFullscreen = this.fullscreenTabs.has(this.activeTabId);
+    if (isFullscreen) {
+      view.setBounds({
+        x: 0,
+        y: 0,
+        width: bounds.width,
+        height: bounds.height,
+      });
+    } else {
+      view.setBounds({
+        x: SIDEBAR_WIDTH,
+        y: TOPBAR_HEIGHT,
+        width: bounds.width - SIDEBAR_WIDTH,
+        height: bounds.height - TOPBAR_HEIGHT,
+      });
+    }
   }
 
   setSidebarPanelWidth(width: number): void {
@@ -667,6 +678,32 @@ export class TabManager {
         });
       }
 
+      if (params.mediaType === 'video') {
+        if (template.length > 0) template.push({ type: 'separator' });
+        template.push({
+          label: 'Resim İçinde Resim (PiP)',
+          click: () => {
+            wc.executeJavaScript(`
+              (async () => {
+                const el = document.elementFromPoint(${params.x}, ${params.y});
+                const video = el?.tagName === 'VIDEO' ? el : el?.querySelector('video') || document.querySelector('video');
+                if (video) {
+                  try {
+                    if (document.pictureInPictureElement) {
+                      await document.exitPictureInPicture();
+                    } else {
+                      await video.requestPictureInPicture();
+                    }
+                  } catch (e) {
+                    console.error('PiP error from context menu:', e);
+                  }
+                }
+              })()
+            `);
+          }
+        });
+      }
+
       if (params.selectionText) {
         if (template.length > 0) template.push({ type: 'separator' });
         template.push({ role: 'copy', label: 'Kopyala' });
@@ -797,6 +834,18 @@ export class TabManager {
       if (!this.isIncognito) {
         this.onNavigateCallback?.(wc.getURL(), title);
       }
+    });
+
+    wc.on('enter-html-full-screen', () => {
+      this.fullscreenTabs.add(tabId);
+      this.resizeActiveTab();
+      this.sendToRenderer(IPC_CHANNELS.NAV_FULLSCREEN_UPDATE, { tabId, isFullscreen: true });
+    });
+
+    wc.on('leave-html-full-screen', () => {
+      this.fullscreenTabs.delete(tabId);
+      this.resizeActiveTab();
+      this.sendToRenderer(IPC_CHANNELS.NAV_FULLSCREEN_UPDATE, { tabId, isFullscreen: false });
     });
 
     // Yeni pencere açma isteklerini yakala → yeni sekmede aç

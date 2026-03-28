@@ -18,6 +18,7 @@ export interface Tab {
   isIncognito?: boolean;
   workspaceId?: string;
   isPinned?: boolean;
+  isFullscreen?: boolean;
   groupId?: string; // Hangi gruba ait olduğu
 }
 
@@ -37,6 +38,7 @@ interface TabState {
   updateTabUrl: (tabId: number, url: string) => void;
   updateTabTitle: (tabId: number, title: string) => void;
   updateTabLoading: (tabId: number, isLoading: boolean) => void;
+  updateTabFullscreen: (tabId: number, isFullscreen: boolean) => void;
   reorderTabs: (activeId: number, overId: number) => void;
   // Yeni eklenen metodlar (arayüz için)
   groupTabs: (tabIds: number[], title?: string, color?: string) => void;
@@ -77,6 +79,13 @@ export const useTabStore = create<TabState>((set) => ({
     set((state) => ({
       tabs: state.tabs.map((tab) =>
         tab.id === tabId ? { ...tab, isLoading } : tab
+      ),
+    })),
+    
+  updateTabFullscreen: (tabId, isFullscreen) =>
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === tabId ? { ...tab, isFullscreen } : tab
       ),
     })),
 
