@@ -12,6 +12,8 @@ import Sidebar from './components/Sidebar/Sidebar';
 import WebViewArea from './components/WebViewArea/WebViewArea';
 import FindBar from './components/FindBar/FindBar';
 import SettingsPage from './components/Settings/SettingsPage';
+import HistoryPage from './components/Pages/HistoryPage';
+import DownloadsPage from './components/Pages/DownloadsPage';
 import PerformanceOverlay from './components/PerformanceOverlay';
 import ChromeMenuOverlay from './components/TopBar/ChromeMenuOverlay';
 import PasswordPromptOverlay from './components/TopBar/PasswordPromptOverlay';
@@ -73,6 +75,8 @@ function App() {
         }
       />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/history" element={<HistoryPage />} />
+      <Route path="/downloads" element={<DownloadsPage />} />
       <Route path="/chromemenu-overlay" element={<ChromeMenuOverlay />} />
       <Route path="/password-prompt-overlay" element={<PasswordPromptOverlay />} />
     </Routes>

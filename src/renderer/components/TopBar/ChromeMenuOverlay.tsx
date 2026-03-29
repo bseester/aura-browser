@@ -61,17 +61,22 @@ export default function ChromeMenuOverlay() {
   };
 
   const handleHistory = () => {
-    window.electronAPI?.sidebar?.togglePanel('history');
+    window.electronAPI?.system?.navigateMainRouter('/history');
     closeMenu();
   };
 
   const handleDownloads = () => {
-    window.electronAPI?.sidebar?.togglePanel('downloads');
+    window.electronAPI?.system?.navigateMainRouter('/downloads');
     closeMenu();
   };
 
   const handleBookmarks = () => {
     window.electronAPI?.sidebar?.togglePanel('bookmarks');
+    closeMenu();
+  };
+
+  const handlePasswords = () => {
+    window.electronAPI?.system?.navigateMainRouter('/settings?category=passwords');
     closeMenu();
   };
 
@@ -247,7 +252,7 @@ export default function ChromeMenuOverlay() {
           <MenuItem icon={<Star size={16} />} label="Yer İmleri" onClick={handleBookmarks} />
           <MenuItem icon={<History size={16} />} label="Geçmiş" shortcut="Ctrl+H" onClick={handleHistory} />
           <MenuItem icon={<Download size={16} />} label="İndirmeler" shortcut="Ctrl+J" onClick={handleDownloads} />
-          <MenuItem icon={<Key size={16} />} label="Şifreler" onClick={closeMenu} />
+          <MenuItem icon={<Key size={16} />} label="Şifreler" onClick={handlePasswords} />
 
           <MenuDivider />
 

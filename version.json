@@ -1,5 +1,5 @@
 {
-  "latest_id": 9,
-  "version": "1.4.2",
-  "notes": "v1.4.2 - Premium Glassmorphism arayüz güncellemesi: PasswordPrompt & Chrome Menu yeniden tasarlandı, varsayılan tarayıcı entegrasyonu iyileştirildi."
+  "latest_id": 10,
+  "version": "1.4.3",
+  "notes": "v1.4.3 - History and Downloads full-screen views added, UI navigation improvements & centralized new tab layout."
 }

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Palette, 
@@ -48,7 +48,17 @@ const CATEGORIES: { id: SettingsCategory; icon: any; label: string }[] = [
 
 export default function SettingsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeCategory, setActiveCategory] = useState<SettingsCategory>('appearance');
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const cat = params.get('category') as SettingsCategory;
+    if (cat && CATEGORIES.some(c => c.id === cat)) {
+      setActiveCategory(cat);
+    }
+  }, [location.search]);
+
   const {
     theme, setTheme,
     accentColor, setAccentColor,
