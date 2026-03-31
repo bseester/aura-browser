@@ -438,6 +438,22 @@ export class TabManager {
     }
   }
 
+  switchNextTab(): void {
+    if (this.tabOrder.length <= 1 || this.activeTabId === null) return;
+    const currentIndex = this.tabOrder.indexOf(this.activeTabId);
+    if (currentIndex === -1) return;
+    const nextIndex = (currentIndex + 1) % this.tabOrder.length;
+    this.switchToTab(this.tabOrder[nextIndex]);
+  }
+
+  switchPreviousTab(): void {
+    if (this.tabOrder.length <= 1 || this.activeTabId === null) return;
+    const currentIndex = this.tabOrder.indexOf(this.activeTabId);
+    if (currentIndex === -1) return;
+    const prevIndex = (currentIndex - 1 + this.tabOrder.length) % this.tabOrder.length;
+    this.switchToTab(this.tabOrder[prevIndex]);
+  }
+
   goBack(): void {
     const wc = this.getActiveWebContents();
     if (wc?.canGoBack()) wc.goBack();
@@ -456,6 +472,80 @@ export class TabManager {
   stop(): void {
     const wc = this.getActiveWebContents();
     wc?.stop();
+  }
+
+  translateActiveTab(): void {
+    const wc = this.getActiveWebContents();
+    if (!wc) return;
+    
+    // Inject Google Translate script and UI gracefully without wiping the page
+    wc.executeJavaScript(`
+        (function() {
+            // Function to initialize or show the translate element
+            window.googleTranslateElementInitMorrow = function() {
+                let container = document.getElementById('google_translate_element_morrow');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'google_translate_element_morrow';
+                    container.style.position = 'fixed';
+                    container.style.top = '10px';
+                    container.style.right = '40px';
+                    container.style.zIndex = '2147483647';
+                    container.style.background = 'white';
+                    container.style.padding = '4px 8px';
+                    container.style.borderRadius = '100px';
+                    container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.4)';
+                    container.style.border = '1px solid rgba(0,0,0,0.1)';
+                    container.style.display = 'flex';
+                    container.style.alignItems = 'center';
+                    document.body.appendChild(container);
+                }
+                
+                container.style.display = 'block';
+
+                // Set cookie for auto-translation to Turkish
+                document.cookie = "googtrans=/auto/tr; path=/;";
+                document.cookie = "googtrans=/auto/tr; path=/; domain=." + location.host;
+
+                const style = document.createElement('style');
+                style.innerHTML = '.goog-te-banner-frame, .goog-te-balloon-frame, .goog-te-menu-frame, .goog-te-menu2, .goog-te-gadget-icon, .goog-te-gadget-simple, .goog-te-gadget, #google_translate_element_morrow, .skiptranslate { display: none !important; } ' +
+                                  'body { top: 0px !important; margin-top: 0px !important; } ' +
+                                  '.goog-te-banner { display: none !important; } ' +
+                                  'iframe.goog-te-menu-frame { display: none !important; }';
+                document.head.appendChild(style);
+
+                if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+                    new google.translate.TranslateElement(
+                        {pageLanguage: 'auto', layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL, autoDisplay: true},
+                        'google_translate_element_morrow'
+                    );
+                } else {
+                    // Fallback: Check every 250ms for the google object
+                    let attempts = 0;
+                    const interval = setInterval(() => {
+                        attempts++;
+                        if (window.google && window.google.translate && window.google.translate.TranslateElement) {
+                            new google.translate.TranslateElement(
+                                {pageLanguage: 'auto', layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL, autoDisplay: true},
+                                'google_translate_element_morrow'
+                            );
+                            clearInterval(interval);
+                        }
+                        if (attempts > 20) clearInterval(interval);
+                    }, 250);
+                }
+            };
+
+            if (!document.getElementById('google_translate_script_morrow')) {
+                const script = document.createElement('script');
+                script.id = 'google_translate_script_morrow';
+                script.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInitMorrow&t=' + Date.now();
+                document.body.appendChild(script);
+            } else {
+                window.googleTranslateElementInitMorrow();
+            }
+        })();
+    `).catch((err: any) => console.error('[TabManager] Translation injection failed:', err));
   }
 
   // ─── Yardımcılar ───
@@ -594,6 +684,98 @@ export class TabManager {
           event.preventDefault();
           console.log(`[Panic] Triggered by shortcut: ${this.panicShortcut}`);
           this.panic(this.panicUrl);
+        }
+      }
+
+      // --- Morrow Browser Global Shortcuts ---
+      if (input.type === 'keyDown') {
+        const ctrl = input.control || input.meta;
+        const shift = input.shift;
+        const alt = input.alt;
+        const key = input.key.toLowerCase();
+
+        // Pencere Derinliği: Ctrl+Shift+W (Pencereyi kapat)
+        if (ctrl && shift && key === 'w') {
+          event.preventDefault();
+          this.mainWindow.close();
+        }
+        
+        // Sekme Değiştir (PgUp/PgDn, Ctrl+Tab)
+        if ((ctrl && key === 'pageup') || (ctrl && shift && key === 'tab')) {
+          event.preventDefault();
+          this.switchPreviousTab();
+        }
+        if ((ctrl && key === 'pagedown') || (ctrl && !shift && key === 'tab')) {
+          event.preventDefault();
+          this.switchNextTab();
+        }
+
+        // Alt+F4 (Çıkış)
+        if (alt && key === 'f4') {
+          event.preventDefault();
+          app.quit();
+        }
+
+        // Gelişmiş Navigasyon: Esc (Durdur), Ctrl+Shift+R (Yenile)
+        if (key === 'escape') {
+          event.preventDefault();
+          this.stop();
+        }
+        if (ctrl && shift && key === 'r') {
+          event.preventDefault();
+          wc.reloadIgnoringCache();
+        }
+        // Geri/İleri (Backspace)
+        if (key === 'backspace' && !input.isAutoRepeat) {
+          // Input field check is hard synchronously in IPC. Usually we rely on shift for backspace navigation here.
+          if (shift) {
+            event.preventDefault();
+            this.goForward();
+          } else if (alt) {
+            // Using Alt+Backspace as safe wrapper for go back (since backspace alone interrupts typing)
+            event.preventDefault();
+            this.goBack();
+          }
+        }
+
+        // Gizli Özellikler
+        if (ctrl && shift && key === 'b') {
+          event.preventDefault();
+          this.mainWindow.webContents.send(IPC_CHANNELS.SYSTEM_TOGGLE_BOOKMARKS_BAR);
+        }
+        if (ctrl && shift && key === 'delete') {
+          event.preventDefault();
+          this.mainWindow.webContents.send(IPC_CHANNELS.SYSTEM_OPEN_CLEAR_DATA);
+        }
+
+        // Web Sayfası Araçları
+        if (ctrl && !shift && key === 'u') {
+          event.preventDefault();
+          const viewUrl = wc.getURL();
+          this.createTab(`view-source:${viewUrl}`);
+        }
+        // Tam ekran: F11
+        if (key === 'f11') {
+          event.preventDefault();
+          const isFull = this.mainWindow.isFullScreen();
+          this.mainWindow.setFullScreen(!isFull);
+        }
+
+        // Developer Tools
+        if (key === 'f12' || (ctrl && shift && ['i', 'j', 'c'].includes(key))) {
+          event.preventDefault();
+          if (wc.isDevToolsOpened()) {
+            wc.closeDevTools();
+          } else {
+            wc.openDevTools({ mode: 'detach' });
+          }
+        }
+        
+        // Ctrl+D is handled mostly by renderer or here
+        if (ctrl && !shift && key === 'd') {
+          event.preventDefault();
+          // Ask renderer to show Bookmark popup
+          this.mainWindow.webContents.send(IPC_CHANNELS.NAV_FAVICON_UPDATED, { tabId: this.activeTabId, url: wc.getURL(), default: true });
         }
       }
     });

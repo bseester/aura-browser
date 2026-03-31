@@ -29,6 +29,9 @@ const electronAPI = {
       ipcRenderer.invoke('tab:show-context-menu', tabId, isPinned),
     closeAll: () => ipcRenderer.invoke('tabs:close-all'),
     panic: (url?: string) => ipcRenderer.invoke('tabs:panic', url),
+    translate: () => ipcRenderer.invoke(IPC_CHANNELS.TAB_TRANSLATE),
+    toggleTranslatePrompt: (bounds: { x: number, y: number }) => ipcRenderer.invoke(IPC_CHANNELS.TAB_TRANSLATE_TOGGLE, bounds),
+    closeTranslatePrompt: () => ipcRenderer.invoke(IPC_CHANNELS.TAB_TRANSLATE_CLOSE),
 
     togglePip: () => ipcRenderer.invoke(IPC_CHANNELS.TAB_TOGGLE_PIP),
     executeJavaScript: (script: string, tabId?: number) =>

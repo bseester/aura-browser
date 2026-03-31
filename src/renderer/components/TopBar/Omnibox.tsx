@@ -7,7 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useTabStore } from '../../store/useTabStore';
 import { useSettingsStore, SEARCH_ENGINES } from '../../store/useSettingsStore';
-import { Star, MonitorPlay, Sparkles, Key } from 'lucide-react';
+import { Star, MonitorPlay, Sparkles, Key, Languages } from 'lucide-react';
 
 export default function Omnibox() {
   const [inputValue, setInputValue] = useState('');
@@ -21,6 +21,7 @@ export default function Omnibox() {
   const { tabs, activeTabId } = useTabStore();
   const [passwordPrompt, setPasswordPrompt] = useState<{ origin: string, username: string, password: string } | null>(null);
   const keyButtonRef = useRef<HTMLButtonElement>(null);
+  const translateButtonRef = useRef<HTMLButtonElement>(null);
 
   // Aktif sekmenin URL'ini göster
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -162,10 +163,25 @@ export default function Omnibox() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       inputRef.current?.blur();
+      return;
     }
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleGo(inputValue);
+      let finalValue = inputValue.trim();
+
+      // Ctrl+Enter: www.____.com
+      if (e.ctrlKey && !finalValue.includes('.') && !finalValue.includes(' ')) {
+        finalValue = `www.${finalValue}.com`;
+      }
+
+      // Alt+Enter: Yeni Sekme
+      if (e.altKey) {
+        window.electronAPI?.tabs?.create?.(finalValue.startsWith('http') || finalValue.includes('.') ? finalValue : `https://google.com/search?q=${encodeURIComponent(finalValue)}`);
+        setShowSuggestions(false);
+        inputRef.current?.blur();
+      } else {
+        handleGo(finalValue);
+      }
     }
   };
 
@@ -328,8 +344,41 @@ export default function Omnibox() {
           </div>
         )}
 
+        {/* Çeviri (Languages) Butonu */}
+        {activeTab?.url && !activeTab.url.startsWith('chrome-extension:') && !activeTab.url.startsWith('morrow://') && activeTab.url !== 'about:blank' && (
+          <motion.button
+            ref={translateButtonRef}
+            type="button"
+            onClick={() => {
+              if (!translateButtonRef.current) return;
+              const rect = translateButtonRef.current.getBoundingClientRect();
+              const x = window.screenX + rect.right - 320;
+              const y = window.screenY + rect.bottom + 4;
+              window.electronAPI?.tabs?.toggleTranslatePrompt?.({ x, y });
+            }}
+            whileHover={{ scale: 1.2, color: 'var(--accent)' }}
+            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              transition: 'color 0.2s ease',
+            }}
+            title="Sayfayı Çevir"
+          >
+            <Languages size={17} />
+          </motion.button>
+        )}
+
         {/* Yer İmi (Yıldız) Butonu — Input'un içinde sağ tarafta */}
-        {activeTab?.url && activeTab.url !== 'about:blank' && activeTab.url !== 'morrow://newtab' && (
+        {activeTab?.url && activeTab.url !== 'about:blank' && !activeTab.url.startsWith('morrow://') && (
           <motion.button
             type="button"
             onClick={handleBookmarkToggle}

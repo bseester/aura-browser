@@ -19,6 +19,12 @@ export const IPC_CHANNELS = {
   TAB_EXECUTE_JS: 'tab:execute-js',
   TAB_GET_ZOOM_LEVEL: 'tab:get-zoom-level',
   TAB_SET_ZOOM_LEVEL: 'tab:set-zoom-level',
+  TAB_NEXT: 'tab:next',
+  TAB_PREV: 'tab:prev',
+  TAB_CLOSE_CURRENT: 'tab:close-current',
+  TAB_TRANSLATE: 'tab:translate',
+  TAB_TRANSLATE_TOGGLE: 'tab:translate:toggle',
+  TAB_TRANSLATE_CLOSE: 'tab:translate:close',
 
   // ─── Navigasyon ───
   NAV_GO: 'nav:go',
@@ -86,6 +92,8 @@ export const IPC_CHANNELS = {
   SYSTEM_GET_COOKIES_COUNT: 'system:get-cookies-count',
   SYSTEM_CLEAR_COOKIES: 'system:clear-cookies',
   DOWNLOADS_CLEAR_HISTORY: 'downloads:clear-history',
+  SYSTEM_TOGGLE_BOOKMARKS_BAR: 'system:toggle-bookmarks-bar',
+  SYSTEM_OPEN_CLEAR_DATA: 'system:open-clear-data',
   
   // Custom Additions
   NAV_FAVICON_UPDATED: 'nav:favicon-updated',
