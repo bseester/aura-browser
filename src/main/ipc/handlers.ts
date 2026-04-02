@@ -590,7 +590,10 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
 
   ipcMain.handle('tabs:panic', (event, url) => {
     getTabManager()?.panic(url);
+  });
 
+  ipcMain.on(IPC_CHANNELS.TAB_REPORT_BOUNDS, (_event, bounds: { x: number, y: number, width: number, height: number }) => {
+    getTabManager()?.updateTabBounds(bounds);
   });
 
   // ─── Navigasyon ───
@@ -667,6 +670,15 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
 
   ipcMain.handle('history:search', (_event, query: string, limit?: number) => {
     return historyManager.search(query, limit);
+  });
+
+  ipcMain.handle('history:get-status', () => {
+    return getDatabase().getSettings().isHistoryEnabled;
+  });
+
+  ipcMain.handle('history:set-status', (_event, enabled: boolean) => {
+    getDatabase().setSettings({ isHistoryEnabled: enabled });
+    return true;
   });
 
   ipcMain.handle(IPC_CHANNELS.HISTORY_GET, (_event, limit?: number) => {
@@ -1156,6 +1168,21 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     workspaceManager.removeWorkspace(id);
   });
 
+  ipcMain.handle('workspace:reorder', (_event, newOrder: any[]) => {
+    workspaceManager.reorderWorkspaces(newOrder);
+  });
+
+  ipcMain.handle('workspace:update', (_event, id: string, name: string, icon: string) => {
+    return workspaceManager.updateWorkspace(id, name, icon);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SYSTEM_SET_TOUCHPAD_GESTURES_ENABLED, (_event, enabled: boolean) => {
+    const { getDatabase } = require('../database/db');
+    getDatabase().setSettings({ isTouchpadGesturesEnabled: enabled });
+    console.log(`[IPC] Touchpad Gestures updated: ${enabled}`);
+    return true;
+  });
+
   // ─── Eklentiler ───
 
   const extensionManager = getExtensionManager();
@@ -1325,4 +1352,7 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
   ipcMain.handle(IPC_CHANNELS.TAB_TRANSLATE, () => {
     getTabManager()?.translateActiveTab();
   });
+
+  // ─── Automated Language Detection Trigger ───
+
 }

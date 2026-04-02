@@ -52,6 +52,9 @@ export class TabManager {
   // Tab Groups logic
   private tabGroups: Map<string, TabGroupInfo> = new Map();
   private tabGroupIds: Map<number, string> = new Map(); // tabId -> groupId mapping
+  
+  // Dynamic layout bounds from renderer
+  private dynamicBounds: { x: number, y: number, width: number, height: number } | null = null;
 
   // Performance logic fields
   private snoozedTabs: Set<number> = new Set();
@@ -336,6 +339,17 @@ export class TabManager {
   }
 
   /**
+   * Renderer'dan gelen dinamik alan bilgilerini günceller
+   */
+  updateTabBounds(bounds: { x: number, y: number, width: number, height: number }): void {
+    if (bounds.width > 0 && bounds.height > 0) {
+      this.dynamicBounds = bounds;
+      // console.log(`[TabBounds] Update: ${JSON.stringify(bounds)}`); // Selective debug
+      this.resizeActiveTab();
+    }
+  }
+
+  /**
    * Aktif sekmeyi pencere boyutuna göre yeniden boyutlandırır.
    * Top bar yüksekliği (80px) ve sidebar genişliği (64px) düşülür.
    */
@@ -353,29 +367,38 @@ export class TabManager {
     const bounds = this.mainWindow.getContentBounds();
     const url = view.webContents.getURL();
     if (url === 'about:blank' || url === '') {
-      // React tabanlı Hızlı Erişim / Yeni Sekme ekranının görünmesi ve tıklanabilmesi için gizle
       view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
       return;
     }
 
-    const TOPBAR_HEIGHT = 80; // TopBar (40px) + WindowControls (40px)
-    const SIDEBAR_WIDTH = 64; // Renderer ile uyumlu base width
-
     const isFullscreen = this.fullscreenTabs.has(this.activeTabId);
     if (isFullscreen) {
+      view.setBounds({ x: 0, y: 0, width: bounds.width, height: bounds.height });
+      return;
+    }
+
+    if (this.dynamicBounds) {
+      // Prioritize renderer-reported bounds (perfect sync with UI shifts)
       view.setBounds({
-        x: 0,
-        y: 0,
-        width: bounds.width,
-        height: bounds.height,
+        x: this.dynamicBounds.x,
+        y: this.dynamicBounds.y,
+        width: this.dynamicBounds.width,
+        height: this.dynamicBounds.height,
       });
     } else {
+      // Fallback: Hardcoded height calculation
+      const TOPBAR_HEIGHT = this.mainWindow.isFullScreen() ? 0 : 80; 
+      const SIDEBAR_WIDTH = this.mainWindow.isFullScreen() ? 0 : 64;
+      
       view.setBounds({
         x: SIDEBAR_WIDTH + this.sidebarPanelWidth,
         y: TOPBAR_HEIGHT,
-        width: bounds.width - (SIDEBAR_WIDTH + this.sidebarPanelWidth),
-        height: bounds.height - TOPBAR_HEIGHT,
+        width: Math.max(0, bounds.width - (SIDEBAR_WIDTH + this.sidebarPanelWidth)),
+        height: Math.max(0, bounds.height - TOPBAR_HEIGHT),
       });
+
+      // Request a bounds report from the renderer just in case
+      this.mainWindow.webContents.send('system:request-bounds-report');
     }
   }
 
@@ -405,6 +428,32 @@ export class TabManager {
         fs.appendFileSync(logPath, `[${new Date().toISOString()}] wc is null, returning\n`);
       } catch { }
       return;
+    }
+
+    // Dahili "morrow://" protokollerini kontrol et
+    if (url.startsWith('morrow://')) {
+      const page = url.replace('morrow://', '');
+      if (page === 'history' || page === 'downloads' || page === 'newtab') {
+        const targetRoute = page === 'newtab' ? '/' : `/${page}`;
+        
+        // 1. WebContentsView'u gizle (React router görünecek)
+        if (this.activeTabId !== null) {
+          const view = this.tabs.get(this.activeTabId);
+          if (view) {
+            view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+            view.webContents.loadURL('about:blank');
+          }
+          
+          // 2. Tab state'ini güncelle (URL çubuğu için)
+          this.tabUrls.set(this.activeTabId, url);
+          this.tabTitles.set(this.activeTabId, page.charAt(0).toUpperCase() + page.slice(1));
+        }
+
+        // 3. Renderer'a navigasyon sinyali gönder
+        this.mainWindow.webContents.send('system:on-navigate-router', targetRoute);
+        this.notifyTabUpdate();
+        return;
+      }
     }
 
     let normalizedUrl = url;
@@ -463,9 +512,9 @@ export class TabManager {
     if (!wc) return;
 
     try {
-      console.log('[TabManager] Starting Morrow Translation (Lingva-based)...');
+      console.log('[TabManager] Starting Morrow AI Translation Engine...');
 
-      // 1. Sayfadaki metin düğümlerini topla
+      // 1. Sayfadaki metin düğümlerini daha akıllıca topla
       const textNodes = await wc.executeJavaScript(`
         (() => {
           const nodes = [];
@@ -475,9 +524,17 @@ export class TabManager {
               if (!parent) return NodeFilter.FILTER_REJECT;
               const tag = parent.tagName.toLowerCase();
               const style = window.getComputedStyle(parent);
-              if (['script', 'style', 'noscript', 'code', 'pre'].includes(tag)) return NodeFilter.FILTER_REJECT;
-              if (style.display === 'none' || style.visibility === 'hidden') return NodeFilter.FILTER_REJECT;
-              if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+              
+              // Skip hidden elements, scripts, code, etc.
+              if (['script', 'style', 'noscript', 'code', 'pre', 'canvas', 'svg'].includes(tag)) 
+                return NodeFilter.FILTER_REJECT;
+              if (style.display === 'none' || style.visibility === 'hidden') 
+                return NodeFilter.FILTER_REJECT;
+              
+              const text = node.textContent.trim();
+              if (text.length < 2 || /^[\\s\\d\\W]+$/.test(text)) 
+                return NodeFilter.FILTER_REJECT;
+                
               return NodeFilter.FILTER_ACCEPT;
             }
           });
@@ -485,7 +542,7 @@ export class TabManager {
           let node;
           let index = 0;
           while (node = walker.nextNode()) {
-            node._morrow_idx = index;
+            node._morrow_ai_idx = index;
             nodes.push({ index, text: node.textContent.trim() });
             index++;
           }
@@ -498,60 +555,82 @@ export class TabManager {
         return;
       }
 
-      // Lingva API'yi electron.net ile çağır (main process'te fetch yok)
+      // Morrow AI Fetch (DeepLX Engine - Premium AI Translation)
       const { net } = require('electron');
-      const lingvaFetch = (text: string): Promise<string> => {
+      const morrowAIFetch = (texts: string[]): Promise<string[]> => {
         return new Promise((resolve) => {
           try {
-            const encoded = encodeURIComponent(text);
-            const url = `https://lingva.ml/api/v1/auto/tr/${encoded}`;
-            const req = net.request({ url, method: 'GET' });
+            // Using a high-performance DeepLX instance for premium non-Google translations
+            const url = 'https://deeplx.pando.io/translate'; 
+            const req = net.request({ url, method: 'POST' });
+            req.setHeader('Content-Type', 'application/json');
+            
             let body = '';
             req.on('response', (res: any) => {
               res.on('data', (chunk: Buffer) => { body += chunk.toString(); });
               res.on('end', () => {
                 try {
                   const json = JSON.parse(body);
-                  resolve(json?.translation || text);
-                } catch { resolve(text); }
+                  if (json.code === 200 && json.data) {
+                    // DeepLX handles arrays or just one string
+                    resolve([json.data]); 
+                  } else {
+                    resolve(texts); 
+                  }
+                } catch { resolve(texts); }
               });
             });
-            req.on('error', () => resolve(text));
+            req.on('error', () => resolve(texts));
+            
+            req.write(JSON.stringify({
+              text: texts.join(' [M_SEP] '), // Batch separator
+              source_lang: "auto",
+              target_lang: "TR"
+            }));
             req.end();
-          } catch { resolve(text); }
+          } catch { resolve(texts); }
         });
       };
 
-      // 2. Metinleri parçalar (chunks) halinde çevir
-      const chunkSize = 20;
+      // 2. Metinleri daha büyük parçalar (chunks) halinde, AI performansıyla çevir
+      const chunkSize = 10; // AI context'ini korumak için makul boyut
       for (let i = 0; i < textNodes.length; i += chunkSize) {
         const chunk = textNodes.slice(i, i + chunkSize);
+        const chunkTexts = chunk.map((c: any) => c.text);
+        
+        try {
+          const [batchResult] = await morrowAIFetch(chunkTexts);
+          // Separator'a göre geri böl (Bazı AI'lar separator'ı bozabilir ama TR için stabil)
+          const translatedParts = batchResult.split(' [M_SEP] ');
 
-        const translations = await Promise.all(chunk.map(async (item: any) => {
-          const translated = await lingvaFetch(item.text);
-          return { index: item.index, translated };
-        }));
+          const translations = chunk.map((item: any, idx: number) => ({
+            index: item.index,
+            translated: translatedParts[idx] || item.text
+          }));
 
-        // 3. Çevrilen parçayı sayfaya anında yansıt
-        await wc.executeJavaScript(`
-          (() => {
-            const translations = ${JSON.stringify(translations)};
-            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
-            let node;
-            while (node = walker.nextNode()) {
-              const found = translations.find(t => t.index === node._morrow_idx);
-              if (found) {
-                node.textContent = found.translated;
-                delete node._morrow_idx;
+          // 3. Çevrilen parçayı sayfaya anında yansıt
+          await wc.executeJavaScript(`
+            (() => {
+              const translations = ${JSON.stringify(translations)};
+              const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+              let node;
+              while (node = walker.nextNode()) {
+                const found = translations.find(t => t.index === node._morrow_ai_idx);
+                if (found) {
+                  node.textContent = found.translated;
+                  delete node._morrow_ai_idx;
+                }
               }
-            }
-          })()
-        `);
+            })()
+          `);
+        } catch (err) {
+          console.warn('[TabManager] Batch translation failed, skipping chunk', err);
+        }
       }
 
-      console.log('[TabManager] Translation completed successfully.');
+      console.log('[TabManager] Morrow AI Translation completed successfully.');
     } catch (err) {
-      console.error('[TabManager] Translation error:', err);
+      console.error('[TabManager] Morrow AI Translation error:', err);
     }
   }
   // ─── Yardımcılar ───
@@ -779,6 +858,76 @@ export class TabManager {
         }
       }
     });
+
+    // ─── macOS Native Gestures (Swipe, Pinch, Smart Zoom) ───
+    if (process.platform === 'darwin') {
+      // 1. Swipe Navigation & Reload
+      (wc as any).on('swipe', (_event: any, direction: string) => {
+        const { getDatabase } = require('../database/db');
+        const db = getDatabase();
+        const isEnabled = db.getSettings().isTouchpadGesturesEnabled;
+        console.log(`[Gesture] Swipe detected: ${direction}, Enabled: ${isEnabled}`);
+        if (!isEnabled) return;
+
+        // Visual Feedback (Renderer'a bildir)
+        this.sendToRenderer(IPC_CHANNELS.GESTURE_FEEDBACK, { type: 'swipe', direction });
+
+        if (direction === 'right') {
+          if (wc.canGoBack()) {
+            setTimeout(() => wc.goBack(), 150); // Animasyonun görünmesi için kısa gecikme
+          }
+        } else if (direction === 'left') {
+          if (wc.canGoForward()) {
+            setTimeout(() => wc.goForward(), 150);
+          }
+        } else if (direction === 'down') {
+           // Reload logic handled by scroll-touch-edge for more "pull" feeling if preferred,
+           // but keeping swipe:down as a secondary trigger for now.
+           wc.reload();
+        }
+      });
+ 
+      // 2. Pinch-to-Zoom (Smooth Magnification)
+      (wc as any).on('pinch-gesture', (_event: any, gestureState: string) => {
+        const { getDatabase } = require('../database/db');
+        const db = getDatabase();
+        const isEnabled = db.getSettings().isTouchpadGesturesEnabled;
+        console.log(`[Gesture] Pinch detected: ${gestureState}, Enabled: ${isEnabled}`);
+        if (!isEnabled) return;
+        
+        // Pinch-start and Pinch-end notifications for UI
+        if (gestureState === 'begin') {
+           this.sendToRenderer(IPC_CHANNELS.GESTURE_FEEDBACK, { type: 'pinch', state: 'begin' });
+        } else if (gestureState === 'end') {
+           const zoom = wc.getZoomFactor();
+           this.sendToRenderer(IPC_CHANNELS.GESTURE_FEEDBACK, { type: 'pinch', state: 'end', zoom });
+        }
+      });
+
+      // 3. Scroll Edge Detection (Pull-to-Refresh & Edge Feedback)
+      (wc as any).on('scroll-touch-edge', () => {
+        const { getDatabase } = require('../database/db');
+        const isEnabled = getDatabase().getSettings().isTouchpadGesturesEnabled;
+        console.log(`[Gesture] Scroll touch edge detected, Enabled: ${isEnabled}`);
+        if (!isEnabled) return;
+        
+        // Bu olay sayfanın en başına ulaşıldığında tetiklenir
+        this.sendToRenderer(IPC_CHANNELS.GESTURE_FEEDBACK, { type: 'edge', position: 'top' });
+      });
+ 
+      // 4. Smart Zoom (Double Tap)
+      (wc as any).on('smart-zoom', () => {
+        const { getDatabase } = require('../database/db');
+        const isEnabled = getDatabase().getSettings().isTouchpadGesturesEnabled;
+        console.log(`[Gesture] Smart zoom detected, Enabled: ${isEnabled}`);
+        if (!isEnabled) return;
+
+        const currentZoom = wc.getZoomFactor();
+        const targetZoom = currentZoom > 1.0 ? 1.0 : 1.5;
+        wc.setZoomFactor(targetZoom);
+        this.sendToRenderer(IPC_CHANNELS.GESTURE_FEEDBACK, { type: 'zoom', value: targetZoom });
+      });
+    }
 
     // ─── Native Context Menu (Dinamik Sağ Tık) ───
     wc.on('context-menu', (_event: any, params: any) => {

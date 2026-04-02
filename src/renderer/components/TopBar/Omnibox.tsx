@@ -21,7 +21,6 @@ export default function Omnibox() {
   const { tabs, activeTabId } = useTabStore();
   const [passwordPrompt, setPasswordPrompt] = useState<{ origin: string, username: string, password: string } | null>(null);
   const keyButtonRef = useRef<HTMLButtonElement>(null);
-  const translateButtonRef = useRef<HTMLButtonElement>(null);
 
   // Aktif sekmenin URL'ini göster
   const activeTab = tabs.find((t) => t.id === activeTabId);
@@ -363,34 +362,6 @@ export default function Omnibox() {
 
         {/* Bar Butonları (AI, PiP ve diğerleri) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <motion.button
-            type="button"
-            ref={translateButtonRef}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!translateButtonRef.current) return;
-              const rect = translateButtonRef.current.getBoundingClientRect();
-              const x = window.screenX + rect.right - 320;
-              const y = window.screenY + rect.bottom + 4;
-              window.electronAPI?.tabs?.toggleTranslatePrompt?.({ x, y });
-            }}
-            whileHover={{ scale: 1.15, color: 'var(--accent)' }}
-            whileTap={{ scale: 0.9 }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              padding: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'color var(--transition-fast)',
-            }}
-            title="Sayıfayı Çevir"
-          >
-            <Languages size={15} />
-          </motion.button>
 
           {/* AI Sparkle Butonu */}
           <motion.button
