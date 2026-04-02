@@ -1,5 +1,5 @@
 {
   "latest_id": 12,
   "version": "1.4.5",
-  "notes": "v1.4.5 - Native macOS touchpad gestures added, legacy mouse gestures removed, layout stability improvements (no black edges)."
+  "notes": "v1.4.5 - Native macOS touchpad gestures added, layout stability improvements (no black edges), smoother UI transitions."
 }

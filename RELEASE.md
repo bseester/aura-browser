@@ -1,3 +1,26 @@
+# 🚀 Morrow Browser v1.4.5 Release Notes
+
+Morrow Browser **v1.4.5** ile kullanıcı deneyimini daha akıcı ve profesyonel bir seviyeye taşıyoruz. Bu sürümde özellikle macOS kullanıcıları için native etkileşimler ve arayüz kararlılığı üzerine odaklandık.
+
+---
+
+## 👆 1. Native macOS Touchpad Deneyimi
+
+v1.4.5 ile birlikte tarayıcınız artık trackpad hareketlerinizi en doğal haliyle anlıyor.
+- **Smart Swipe Navigation:** İki parmağınızla sağa veya sola kaydırarak sekmeler arası geçmişte (Geri/İleri) anında gezinebilirsiniz.
+- **Pull-to-Reload:** Sayfanın en üstündeyken aşağı doğru kaydırdığınızda sayfanın yenilenmesini sağlayan native macOS mekanizması entegre edildi.
+- **Pinch-to-Zoom:** Sayfaları parmak hareketlerinizle çok daha hassas bir şekilde yakınlaştırıp uzaklaştırabilirsiniz.
+
+---
+
+## 🎨 2. Kusursuz Arayüz Kararlılığı
+
+Pencere boyutlandırma ve panel geçişleri artık çok daha temiz.
+- **No More Black Edges:** Pencereyi boyutlandırırken veya yan paneli açıp kapatırken oluşan görsel siyah boşluklar (layout artifacts) tamamen giderildi.
+- **Dynamic Bounds Sync:** Ana işlem ve arayüz arasındaki koordinasyon güçlendirilerek web sayfalarının her an pencereye tam oturması sağlandı.
+
+---
+
 # 🚀 Morrow Browser v1.4.1 Release Notes
 
 Morrow Browser'ın bugüne kadarki en önemli kilometre taşı olan **v1.4.1** sürümüne hoş geldiniz. Bu sürüm, tarayıcı deneyimini "Tam Otomatik" seviyeye taşıyan **Arka Plan Güncelleme** ve **Sessiz Kurulum** altyapısını beraberinde getiriyor. Artık sürüm takibi yapmanıza gerek yok; Morrow sizin için her şeyi hallediyor.

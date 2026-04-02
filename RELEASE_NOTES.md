@@ -1,3 +1,15 @@
+# Morrow Browser V1.4.5 - Native Touchpad & Layout Stability
+
+Bu sürümle birlikte Morrow Browser'ın kullanıcı etkileşim hızı ve görsel kararlılığı yeni bir boyuta ulaştı. Özellikle macOS kullanıcıları için beklenen native deneyimler eklendi.
+
+### Yeni Özellikler & Değişiklikler
+- **Native macOS Trackpad Gestures**: Geri/İleri navigasyon ve sayfa yenileme (pull-to-reload) işlemleri artık en doğal haliyle trackpad üzerinden yapılabiliyor.
+- **Kusursuz Pencere Boyutlandırma (Anti-Black Edges)**: Pencere boyutlandırılırken veya yan paneller açılıp kapatılırken web içeriğinin pencereye tam olarak oturması ve siyah kenarların oluşması engellendi.
+- **Dinamik Koordinat Senkronizasyonu**: Renderer ve ana süreç (Main) arasındaki iletişim akıllı `ResizeObserver` ile güçlendirildi.
+- **Performans Optimizasyonu**: Arayüz geçişleri ve animasyonlar çok daha stabil ve hızlı.
+
+---
+
 # Morrow Browser V1.4.2 - Premium UI Güncellemesi & Arayüz Modernizasyonu
 
 Bu sürümle birlikte Morrow Browser'ın tüm katmanlı (overlay) bileşenleri premium glassmorphism tasarım diline kavuşturuldu ve varsayılan tarayıcı entegrasyonu güçlendirildi.
