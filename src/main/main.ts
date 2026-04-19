@@ -18,8 +18,14 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.morrow.browser');
 }
 
-// Siyah ekran sorununu çözmek için donanım hızlandırmayı devre dışı bırak
-app.disableHardwareAcceleration();
+// Siyah ekran sorununu çözmek için donanım hızlandırmayı sadece sorunlu OS'lerde devre dışı bırak
+if (process.platform !== 'darwin') {
+  app.disableHardwareAcceleration();
+}
+
+// Google Sign-In (OAuth) Bloklamasını aşmak için (FedCM kapatılıyor)
+app.commandLine.appendSwitch('disable-blink-features', 'AutomationControlled');
+app.commandLine.appendSwitch('disable-features', 'FedCm');
 
 // ─── Singleton kilidi (tek pencere) ───
 
@@ -50,9 +56,6 @@ if (!gotLock) {
   app.whenReady().then(() => {
     adBlocker = new AdBlocker(session.defaultSession);
     
-    // Google Sign-In ve tarayıcı tespiti için Chrome UA tanımla (V3 Tutarlılık)
-    const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-    session.defaultSession.setUserAgent(CHROME_UA);
 
     windowManager = new WindowManager();
     const mainWindow = windowManager.createMainWindow();
@@ -68,14 +71,34 @@ if (!gotLock) {
       });
     }
 
-    // ─── Chrome Web Store Spoofing (Global System User Agent) ───
-    const CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-    app.userAgentFallback = CHROME_USER_AGENT;
-    
-    // Oturum Bazlı User Agent ve Kalıcılık Zorlaması
+    // Oturum bazlı kalıcılık
     const persistentSession = session.fromPartition('persist:bseester');
-    persistentSession.setUserAgent(CHROME_USER_AGENT);
-    session.defaultSession.setUserAgent(CHROME_USER_AGENT);
+
+    // ─── Google Sign-In Firefox UA Fix ───
+    // Google, accounts.google.com'da Chromium/Electron tabanlı istekleri
+    // "güvenli olmayan uygulama" olarak işaretler. Firefox UA gönderince bu
+    // kontrol devreye girmiyor. Diğer sitelerde Chrome UA korunur.
+    const CHROME_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    const FIREFOX_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:131.0) Gecko/20100101 Firefox/131.0';
+
+    const GOOGLE_AUTH_DOMAINS = [
+      'accounts.google.com',
+      'myaccount.google.com',
+    ];
+
+    const applyFirefoxUAFix = (sess: Electron.Session) => {
+      sess.setUserAgent(CHROME_UA);
+      sess.webRequest.onBeforeSendHeaders((details, callback) => {
+        const headers = details.requestHeaders;
+        const isGoogleAuth = GOOGLE_AUTH_DOMAINS.some(d => details.url.includes(d));
+        headers['User-Agent'] = isGoogleAuth ? FIREFOX_UA : CHROME_UA;
+        callback({ requestHeaders: headers });
+      });
+    };
+
+    applyFirefoxUAFix(session.defaultSession);
+    applyFirefoxUAFix(persistentSession);
+
 
     // Uygulama kapanırken verileri diske yazmayı zorla (Giriş bilgilerinin korunması için kritik)
     app.on('before-quit', async () => {
