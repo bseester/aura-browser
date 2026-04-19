@@ -1202,21 +1202,9 @@ export function registerIPCHandlers(windowManager: WindowManager, adBlocker: AdB
     const popupX = Math.round(winBounds.x + anchorRect.x + anchorRect.width - popupWidth);
     const popupY = Math.round(winBounds.y + anchorRect.y + anchorRect.height + 6);
 
-    // Extension ikonu dosyalarını bul
     const extData = extensions.map((ext: any) => {
-      const fs = require('fs');
-      const path = require('path');
-      let iconPath = '';
-      try {
-        const manifest = JSON.parse(fs.readFileSync(path.join(ext.path, 'manifest.json'), 'utf8'));
-        const iconRelPath = manifest?.icons?.['48'] || manifest?.icons?.['32'] || manifest?.icons?.['16'] ||
-          manifest?.action?.default_icon?.['48'] || manifest?.action?.default_icon?.['19'] || '';
-        if (iconRelPath) {
-          const full = path.join(ext.path, iconRelPath);
-          if (fs.existsSync(full)) iconPath = `file://${full}`;
-        }
-      } catch {}
-      return { id: ext.id, name: ext.name, version: ext.version, iconPath };
+      const iconUrl = `chrome-extension://${ext.id}/icon48.png`;
+      return { id: ext.id, name: ext.name, version: ext.version, iconUrl };
     });
 
     const html = `<!DOCTYPE html>
@@ -1234,17 +1222,17 @@ body { font-family: -apple-system, 'Inter', sans-serif; background: #1c1b2e; col
 .ext-list { overflow-y: auto; }
 .ext-item { display:flex; align-items:center; gap:12px; padding:8px 16px; cursor:pointer; transition:background 0.1s; }
 .ext-item:hover { background:rgba(255,255,255,0.05); }
-.ext-icon { width:32px; height:32px; border-radius:8px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.25); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; overflow:hidden; }
+.ext-icon { width:32px; height:32px; border-radius:8px; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.2); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; overflow:hidden; }
 .ext-icon img { width:100%; height:100%; object-fit:contain; }
 .ext-info { flex:1; min-width:0; }
 .ext-name { font-size:13px; font-weight:500; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ext-ver { font-size:10px; color:rgba(255,255,255,0.35); }
 .actions { display:flex; gap:2px; flex-shrink:0; }
-.action-btn { width:26px; height:26px; background:none; border:none; color:rgba(255,255,255,0.3); cursor:pointer; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:13px; }
+.action-btn { width:26px; height:26px; background:none; border:none; color:rgba(255,255,255,0.3); cursor:pointer; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px; }
 .action-btn:hover { background:rgba(248,113,113,0.12); color:#f87171; }
 .footer { border-top: 1px solid rgba(255,255,255,0.07); padding:4px; }
-.manage-btn { width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px; background:none; border:none; border-radius:10px; color:rgba(255,255,255,0.6); cursor:pointer; font-size:13px; font-weight:500; }
-.manage-btn:hover { background:rgba(255,255,255,0.05); color:#fff; }
+.footer-btn { width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px; background:none; border:none; border-radius:10px; color:rgba(255,255,255,0.6); cursor:pointer; font-size:12px; font-weight:500; }
+.footer-btn:hover { background:rgba(255,255,255,0.05); color:#fff; }
 .empty { padding:28px 16px; text-align:center; color:rgba(255,255,255,0.3); font-size:12px; }
 </style>
 </head>
@@ -1254,19 +1242,24 @@ ${extData.length > 0 ? '<div class="subtitle">Yüklü Uzantılar</div>' : ''}
 <div class="ext-list">
 ${extData.length === 0 ? '<div class="empty">Henüz yüklü uzantı yok.</div>' : extData.map((e: any) => `
 <div class="ext-item" onclick="openPopup('${e.id}')">
-  <div class="ext-icon">${e.iconPath ? `<img src="${e.iconPath}" onerror="this.style.display='none';this.parentElement.textContent='🧩'">` : '🧩'}</div>
+  <div class="ext-icon"><img src="${e.iconUrl}" onerror="this.style.display='none';this.parentElement.textContent='🧩'"></div>
   <div class="ext-info"><div class="ext-name">${e.name}</div><div class="ext-ver">v${e.version}</div></div>
   <div class="actions"><button class="action-btn" onclick="event.stopPropagation();removeExt('${e.id}')" title="Kaldır">&#x2715;</button></div>
 </div>`).join('')}
 </div>
-<div class="footer"><button class="manage-btn" onclick="openSettings()">⚙️ Uzantıları yönet</button></div>
+<div class="footer">
+  <button class="footer-btn" onclick="openWebStore()">🌐 Chrome Web Store</button>
+  <button class="footer-btn" onclick="openSettings()">⚙️ Uzantıları yönet</button>
+</div>
 <script>
   const { ipcRenderer } = require('electron');
   function openPopup(id) { ipcRenderer.invoke('extension:open-popup-from-list', id); window.close(); }
   function removeExt(id) { ipcRenderer.invoke('extension:remove', id); window.close(); }
+  function openWebStore() { ipcRenderer.invoke('extension:open-web-store'); window.close(); }
   function openSettings() { ipcRenderer.invoke('system:navigate-main-router', '/settings?category=extensions'); window.close(); }
 <\/script>
 </body></html>`;
+
 
     const tmpFile = require('path').join(require('os').tmpdir(), 'morrow-ext-list.html');
     require('fs').writeFileSync(tmpFile, html);
@@ -1327,10 +1320,11 @@ ${extData.length === 0 ? '<div class="empty">Henüz yüklü uzantı yok.</div>' 
       frame: false, transparent: false,
       alwaysOnTop: true, resizable: false,
       skipTaskbar: true, show: false,
-      webPreferences: { 
-        session: require('electron').session.defaultSession, 
-        nodeIntegration: true, // Bridge için gerekli
-        contextIsolation: false 
+      webPreferences: {
+        partition: 'persist:bseester',
+        nodeIntegration: true,
+        contextIsolation: false,
+        webSecurity: true,
       },
     });
     (popupWin as any).__extensionPopup = true;
@@ -1402,8 +1396,15 @@ ${extData.length === 0 ? '<div class="empty">Henüz yüklü uzantı yok.</div>' 
     mainWin?.webContents.send('system:on-navigate-router', route);
   });
 
+  // Chrome Web Store'u aç
+  ipcMain.handle('extension:open-web-store', () => {
+    const tabManager = getTabManager();
+    if (tabManager) {
+      tabManager.createTab('https://chrome.google.com/webstore/category/extensions');
+    }
+  });
 
-  // Eklenti popup penceresini aç (Chrome'daki gibi)
+
   ipcMain.handle(IPC_CHANNELS.EXTENSION_OPEN_POPUP, async (_event, extensionId: string, anchorRect: { x: number; y: number; width: number; height: number }) => {
     const { BrowserWindow } = require('electron');
     const path = require('path');
